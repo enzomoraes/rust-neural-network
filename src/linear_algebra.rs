@@ -58,17 +58,17 @@ impl Matrix {
     }
 
     pub fn subtract(&self, matrix_b: &Matrix) -> Matrix {
-      if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-        panic!("Cannot subtract matrices.")
-    };
+        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
+            panic!("Cannot subtract matrices.")
+        };
 
-    let mut subtracted_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
-    for i in 0..subtracted_matrix.rows {
-        for j in 0..subtracted_matrix.cols {
-            subtracted_matrix.data[i][j] = self.data[i][j] - matrix_b.data[i][j];
+        let mut subtracted_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
+        for i in 0..subtracted_matrix.rows {
+            for j in 0..subtracted_matrix.cols {
+                subtracted_matrix.data[i][j] = self.data[i][j] - matrix_b.data[i][j];
+            }
         }
-    }
-    return subtracted_matrix;
+        return subtracted_matrix;
     }
 
     pub fn multiply(&self, matrix_b: &Matrix) -> Matrix {
@@ -116,13 +116,23 @@ impl Matrix {
 
 impl fmt::Display for Matrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Find the maximum width of any element in the matrix
+        let max_width = self.data.iter().flatten().map(|&x| x.to_string().len()).max().unwrap_or(0);
+
+        writeln!(f, "")?;
         for i in 0..self.rows {
-            write!(f, "[")?;
+            write!(f, "|")?;
             for j in 0..self.cols {
-                write!(f, " { } ", &self.data[i][j])?;
+                // std::fmt fill/alignment
+                let cell_str = format!("{:^width$}", self.data[i][j], width = max_width);
+                write!(f, "{}", cell_str)?;
+                if j < self.cols - 1 {
+                    // Print a whitespace between values in the same row
+                    write!(f, "  ")?;
+                }
             }
-            writeln!(f, "]")?;
+            writeln!(f, "|")?;
         }
-        Ok(())
+        return writeln!(f, "");
     }
 }
