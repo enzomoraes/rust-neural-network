@@ -25,17 +25,24 @@ impl Layer {
     }
 }
 
+pub struct Activation {
+    pub function: Box<dyn Fn(f64) -> f64>,
+    pub derivative: Box<dyn Fn(f64) -> f64>,
+}
+
 pub struct NeuralNetwork {
     layers: Vec<Layer>,
     learning_rate: f64,
-    activation: Box<dyn Fn(f64) -> f64>,
+    activation: Activation,
+    loss_function: Box<dyn Fn(f64) -> f64>,
 }
 
 impl NeuralNetwork {
     pub fn new(
         neurons_per_layer: Vec<usize>,
         learning_rate: f64,
-        activation: Box<dyn Fn(f64) -> f64>,
+        activation: Activation,
+        loss_function: Box<dyn Fn(f64) -> f64>,
     ) -> NeuralNetwork {
         let mut layers: Vec<Layer> = vec![];
 
@@ -47,6 +54,7 @@ impl NeuralNetwork {
             layers,
             learning_rate,
             activation,
+            loss_function,
         };
     }
 
@@ -60,9 +68,19 @@ impl NeuralNetwork {
         for i in 0..self.layers.len() {
             data = self.layers[i]
                 .weigh_inputs(&data)
-                .apply_function(&self.activation);
+                .apply_function(&self.activation.function);
         }
 
         return data;
+    }
+
+    fn loss(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
+        return target
+            .subtract(&predictions)
+            .apply_function(&self.loss_function);
+    }
+
+    fn gradient(&self, matrix: &Matrix) -> Matrix {
+        return matrix.apply_function(&self.activation.derivative);
     }
 }
