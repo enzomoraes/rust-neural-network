@@ -138,38 +138,38 @@ mod linear_algebra_tests {
         matrix_a.subtract(&matrix_b);
     }
 
+    #[test]
     fn matrix_2x2_subtraction() {
-      let a: MatrixData = vec![vec![1.0, 10.0], vec![4.0, 9.0]];
-      let b: MatrixData = vec![vec![3.0, 5.0], vec![5.0, 7.0]];
-      let matrix_a: Matrix = Matrix::new(a);
-      let matrix_b: Matrix = Matrix::new(b);
-      let added_matrix: Matrix = matrix_a.subtract(&matrix_b);
+        let a: MatrixData = vec![vec![1.0, 10.0], vec![4.0, 9.0]];
+        let b: MatrixData = vec![vec![3.0, 5.0], vec![5.0, 7.0]];
+        let matrix_a: Matrix = Matrix::new(a);
+        let matrix_b: Matrix = Matrix::new(b);
+        let added_matrix: Matrix = matrix_a.subtract(&matrix_b);
 
-      assert_eq!(added_matrix.rows, 2);
-      assert_eq!(added_matrix.cols, 2);
+        assert_eq!(added_matrix.rows, 2);
+        assert_eq!(added_matrix.cols, 2);
 
-      assert_eq!(added_matrix.data[0][0], -2.0);
-      assert_eq!(added_matrix.data[0][1], -5.0);
+        assert_eq!(added_matrix.data[0][0], -2.0);
+        assert_eq!(added_matrix.data[0][1], 5.0);
 
-      assert_eq!(added_matrix.data[1][0], 1.0);
-      assert_eq!(added_matrix.data[1][1], 2.0);
-  }
+        assert_eq!(added_matrix.data[1][0], -1.0);
+        assert_eq!(added_matrix.data[1][1], 2.0);
+    }
 
-  #[test]
-  fn matrix_1x1_subtraction() {
-      let a: MatrixData = vec![vec![1.0], vec![4.0]];
-      let b: MatrixData = vec![vec![3.0], vec![5.0]];
-      let matrix_a: Matrix = Matrix::new(a);
-      let matrix_b: Matrix = Matrix::new(b);
-      let added_matrix: Matrix = matrix_a.subtract(&matrix_b);
+    #[test]
+    fn matrix_1x1_subtraction() {
+        let a: MatrixData = vec![vec![1.0], vec![4.0]];
+        let b: MatrixData = vec![vec![3.0], vec![5.0]];
+        let matrix_a: Matrix = Matrix::new(a);
+        let matrix_b: Matrix = Matrix::new(b);
+        let added_matrix: Matrix = matrix_a.subtract(&matrix_b);
 
-      assert_eq!(added_matrix.rows, 2);
-      assert_eq!(added_matrix.cols, 1);
+        assert_eq!(added_matrix.rows, 2);
+        assert_eq!(added_matrix.cols, 1);
 
-      assert_eq!(added_matrix.data[0][0], -2.0);
-      assert_eq!(added_matrix.data[1][0], -1.0);
-  }
-
+        assert_eq!(added_matrix.data[0][0], -2.0);
+        assert_eq!(added_matrix.data[1][0], -1.0);
+    }
 
     #[test]
     #[should_panic]
