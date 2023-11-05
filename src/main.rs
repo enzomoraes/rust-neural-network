@@ -27,7 +27,7 @@ fn main() {
         vec![1.0, 1.0],
     ];
     let target: Vec<Vec<f64>> = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
-    network.train(inputs, target, 1000);
+    network.train(inputs, target, 10000);
 
     let prediction1 = network.try_to_predict(vec![0.0, 0.0]);
     let prediction2 = network.try_to_predict(vec![1.0, 0.0]);

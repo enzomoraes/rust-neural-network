@@ -79,7 +79,7 @@ impl NeuralNetwork {
             }
             for j in 0..inputs.len() {
                 let predictions = self.feed_forward(inputs[j].clone());
-                self.back_propagate(predictions, target[j].clone());
+                self.back_propagate(predictions, target[j].clone(), inputs[j].clone());
             }
         }
     }
@@ -105,35 +105,39 @@ impl NeuralNetwork {
         return data.transpose().data[0].to_owned();
     }
 
-    fn back_propagate(&mut self, predictions: Vec<f64>, target: Vec<f64>) {
+    fn back_propagate(&mut self, predictions: Vec<f64>, target: Vec<f64>, inputs: Vec<f64>) {
         if target.len() != self.layers[self.layers.len() - 1].outputs {
             panic!("Invalid targets length");
         }
 
         let mut loss = self
             .loss(
-                &Matrix::new(vec![target.to_owned()]),
-                &Matrix::new(vec![predictions.to_owned()]),
+                &Matrix::new(vec![target]),
+                &Matrix::new(vec![predictions.clone()]),
             )
             .transpose();
 
         let size: usize = self.layers.len();
         let mut gradient: Matrix =
-            self.gradient(&Matrix::new(vec![predictions.to_owned()]).transpose());
+            self.gradient(&Matrix::new(vec![predictions.clone()]).transpose());
 
-        for i in (1..size).rev() {
+        for i in (0..size).rev() {
             gradient = gradient
                 .hadamard_product(&loss)
                 .apply_function(&|x| x * self.learning_rate);
 
-            let gradient_weights = gradient.multiply(&self.layers[i - 1].output.transpose());
-            self.layers[i].add_to_weights(&gradient_weights);
-            self.layers[i].add_to_biases(&gradient);
-
-            // should loss function be applied here?
-            // loss = self.layers[i].weights.transpose().multiply(&loss).apply_function(&self.loss_function);
-            loss = self.layers[i].weights.transpose().multiply(&loss);
-            gradient = self.gradient(&self.layers[i - 1].output);
+            if i == 0 {
+                let gradient_weights = gradient.multiply(&Matrix::new(vec![inputs.clone()]));
+                self.layers[i].add_to_weights(&gradient_weights);
+                self.layers[i].add_to_biases(&gradient);
+            } else {
+                let gradient_weights = gradient.multiply(&self.layers[i - 1].output.transpose());
+                self.layers[i].add_to_weights(&gradient_weights);
+                self.layers[i].add_to_biases(&gradient);
+                // should loss function be applied here?
+                loss = self.layers[i].weights.transpose().multiply(&loss);
+                gradient = self.gradient(&self.layers[i - 1].output);
+            }
         }
     }
 
