@@ -1,6 +1,7 @@
 use core::fmt;
 use rand::{thread_rng, Rng};
 
+#[derive(Clone)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
@@ -45,7 +46,7 @@ impl Matrix {
 
     pub fn add(&self, matrix_b: &Matrix) -> Matrix {
         if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!("Cannot add matrices.")
+            panic!("Cannot add matrices. {}x{} & {}x{}", self.rows, self.cols, matrix_b.rows, matrix_b.cols)
         };
 
         let mut added_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
