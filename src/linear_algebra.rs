@@ -120,7 +120,6 @@ impl fmt::Display for Matrix {
         // Find the maximum width of any element in the matrix
         let max_width = self.data.iter().flatten().map(|&x| x.to_string().len()).max().unwrap_or(0);
 
-        writeln!(f, "")?;
         for i in 0..self.rows {
             write!(f, "|")?;
             for j in 0..self.cols {
@@ -134,6 +133,6 @@ impl fmt::Display for Matrix {
             }
             writeln!(f, "|")?;
         }
-        return writeln!(f, "");
+        return write!(f, "");
     }
 }

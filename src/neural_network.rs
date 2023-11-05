@@ -5,7 +5,7 @@ pub struct Layer {
     outputs: usize,
     weights: Matrix,
     biases: Matrix,
-    inputs_matrix: Matrix,
+    output: Matrix,
 }
 
 impl Layer {
@@ -18,7 +18,7 @@ impl Layer {
             outputs,
             weights,
             biases,
-            inputs_matrix: Matrix::zero(inputs, 1),
+            output: Matrix::zero(inputs, 1),
         };
     }
 
@@ -34,8 +34,8 @@ impl Layer {
         return self.weights.multiply(&inputs).add(&self.biases);
     }
 
-    fn set_inputs_matrix(&mut self, clone: Matrix) {
-        self.inputs_matrix = clone;
+    fn set_output(&mut self, clone: Matrix) {
+        self.output = clone;
     }
 }
 
@@ -72,55 +72,68 @@ impl NeuralNetwork {
         };
     }
 
-    pub fn train(&mut self, inputs: &Vec<Vec<f64>>, target: &Vec<Vec<f64>>, epochs: usize) {
+    pub fn train(&mut self, inputs: Vec<Vec<f64>>, target: Vec<Vec<f64>>, epochs: usize) {
         for i in 1..=epochs {
             if i % (epochs) == 0 {
                 println!("Epoch {} of {}", i, epochs);
             }
             for j in 0..inputs.len() {
-                let predictions = self.feed_forward(&inputs[j]);
-                self.back_propagate(&predictions, &target[j]);
+                let predictions = self.feed_forward(inputs[j].clone());
+                self.back_propagate(predictions, target[j].clone());
             }
         }
     }
 
-    pub fn try_to_predict(&mut self, inputs: &Vec<f64>) -> Vec<f64> {
+    pub fn try_to_predict(&mut self, inputs: Vec<f64>) -> Vec<f64> {
         return self.feed_forward(inputs);
     }
 
-    fn feed_forward(&mut self, inputs: &Vec<f64>) -> Vec<f64> {
+    fn feed_forward(&mut self, inputs: Vec<f64>) -> Vec<f64> {
         if inputs.len() != self.layers[0].inputs {
             panic!("Inputs length does not match with neural network");
         }
 
-        let mut data: Matrix = Matrix::new(vec![inputs.to_vec()]).transpose();
+        let mut data: Matrix = Matrix::new(vec![inputs]).transpose();
 
         for i in 0..self.layers.len() {
-            self.layers[i].set_inputs_matrix(data.clone());
             data = self.layers[i]
                 .weigh_inputs(&data)
                 .apply_function(&self.activation.function);
+            self.layers[i].set_output(data.clone());
         }
 
         return data.transpose().data[0].to_owned();
     }
 
-    fn back_propagate(&mut self, predictions: &Vec<f64>, target: &Vec<f64>) {
-        let loss = self.loss(
-            &Matrix::new(vec![target.to_owned()]),
-            &Matrix::new(vec![predictions.to_owned()]),
-        );
+    fn back_propagate(&mut self, predictions: Vec<f64>, target: Vec<f64>) {
+        if target.len() != self.layers[self.layers.len() - 1].outputs {
+            panic!("Invalid targets length");
+        }
+
+        let mut loss = self
+            .loss(
+                &Matrix::new(vec![target.to_owned()]),
+                &Matrix::new(vec![predictions.to_owned()]),
+            )
+            .transpose();
+
         let size: usize = self.layers.len();
-        let mut gradient = self.gradient(&loss.transpose());
+        let mut gradient: Matrix =
+            self.gradient(&Matrix::new(vec![predictions.to_owned()]).transpose());
 
         for i in (1..size).rev() {
             gradient = gradient
-                .apply_function(&self.activation.derivative)
+                .hadamard_product(&loss)
                 .apply_function(&|x| x * self.learning_rate);
 
-            let gradient_weights = &gradient.multiply(&self.layers[i].inputs_matrix.transpose());
-            self.layers[i].add_to_weights(gradient_weights);
-            self.layers[i].add_to_biases(&gradient.apply_function(&|x| x * self.learning_rate));
+            let gradient_weights = gradient.multiply(&self.layers[i - 1].output.transpose());
+            self.layers[i].add_to_weights(&gradient_weights);
+            self.layers[i].add_to_biases(&gradient);
+
+            // should loss function be applied here?
+            // loss = self.layers[i].weights.transpose().multiply(&loss).apply_function(&self.loss_function);
+            loss = self.layers[i].weights.transpose().multiply(&loss);
+            gradient = self.gradient(&self.layers[i - 1].output);
         }
     }
 
