@@ -74,7 +74,7 @@ impl NeuralNetwork {
 
     pub fn train(&mut self, inputs: Vec<Vec<f64>>, target: Vec<Vec<f64>>, epochs: usize) {
         for i in 1..=epochs {
-            if i % (epochs) == 0 {
+            if i % (1000) == 0 {
                 println!("Epoch {} of {}", i, epochs);
             }
             for j in 0..inputs.len() {
