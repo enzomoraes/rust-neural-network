@@ -134,8 +134,12 @@ impl NeuralNetwork {
                 let gradient_weights = gradient.multiply(&self.layers[i - 1].output.transpose());
                 self.layers[i].add_to_weights(&gradient_weights);
                 self.layers[i].add_to_biases(&gradient);
-                // should loss function be applied here?
-                loss = self.layers[i].weights.transpose().multiply(&loss);
+
+                loss = self.layers[i]
+                    .weights
+                    .transpose()
+                    .apply_function(&self.loss_function)
+                    .multiply(&loss);
                 gradient = self.gradient(&self.layers[i - 1].output);
             }
         }
@@ -143,8 +147,8 @@ impl NeuralNetwork {
 
     fn loss(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
         return target
-            .subtract(&predictions)
-            .apply_function(&self.loss_function);
+            .apply_function(&self.loss_function)
+            .subtract(&predictions);
     }
 
     fn gradient(&self, matrix: &Matrix) -> Matrix {
