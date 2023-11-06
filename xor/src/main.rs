@@ -1,12 +1,7 @@
-mod activations;
-mod linear_algebra;
-mod linear_algebra_tests;
-mod neural_network;
-
-use activations::SIGMOID;
+use neural_network::activations::SIGMOID;
 use neural_network::NeuralNetwork;
 
-use crate::linear_algebra::Matrix;
+use linear_algebra::Matrix;
 
 fn main() {
     println!("Hello, world!");

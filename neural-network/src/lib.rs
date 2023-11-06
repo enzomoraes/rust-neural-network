@@ -1,11 +1,13 @@
+pub mod activations;
+
+use activations::Activation;
+use linear_algebra::Matrix;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, json};
 use std::{
     fs::File,
     io::{Read, Write},
 };
-
-use super::{activations::Activation, linear_algebra::Matrix};
-use serde::{Deserialize, Serialize};
-use serde_json::{from_str, json};
 
 #[derive(Serialize, Deserialize)]
 pub struct Layer {
@@ -85,8 +87,14 @@ impl NeuralNetwork<'_> {
             if i % (100) == 0 {
                 println!("Epoch {} of {}", i, epochs);
             }
+            let mut training_precision: f64 = 0.0;
             for j in 0..inputs.len() {
-                let predictions = self.feed_forward(inputs[j].clone());
+                let predictions: Vec<f64> = self.feed_forward(inputs[j].clone());
+                if Matrix::new(vec![target[j].clone()])
+                    .is_equal(&Matrix::new(vec![predictions.clone()]))
+                {
+                    training_precision += 1.0;
+                }
                 self.back_propagate(predictions, target[j].clone(), inputs[j].clone());
             }
         }

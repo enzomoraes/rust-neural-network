@@ -1,0 +1,10 @@
+[package]
+name = "mnist"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+linear-algebra = {path = "../linear-algebra"}
+neural-network = {path = "../neural-network"}

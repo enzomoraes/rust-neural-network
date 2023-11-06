@@ -1,9 +1,9 @@
+mod linear_algebra_tests;
 use core::fmt;
 use rand::{thread_rng, Rng};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
@@ -48,7 +48,10 @@ impl Matrix {
 
     pub fn add(&self, matrix_b: &Matrix) -> Matrix {
         if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!("Cannot add matrices. {}x{} & {}x{}", self.rows, self.cols, matrix_b.rows, matrix_b.cols)
+            panic!(
+                "Cannot add matrices. {}x{} & {}x{}",
+                self.rows, self.cols, matrix_b.rows, matrix_b.cols
+            )
         };
 
         let mut added_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
@@ -106,6 +109,21 @@ impl Matrix {
         return multiplied_matrix;
     }
 
+    pub fn is_equal(&self, matrix_b: &Matrix) -> bool {
+        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
+            return false;
+        };
+
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                if !self.data[i][j].eq(&matrix_b.data[i][j]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     pub fn apply_function(&self, function: &dyn Fn(f64) -> f64) -> Matrix {
         return Matrix::new(
             self.data
@@ -120,7 +138,13 @@ impl Matrix {
 impl fmt::Display for Matrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Find the maximum width of any element in the matrix
-        let max_width = self.data.iter().flatten().map(|&x| x.to_string().len()).max().unwrap_or(0);
+        let max_width = self
+            .data
+            .iter()
+            .flatten()
+            .map(|&x| x.to_string().len())
+            .max()
+            .unwrap_or(0);
 
         for i in 0..self.rows {
             write!(f, "|")?;

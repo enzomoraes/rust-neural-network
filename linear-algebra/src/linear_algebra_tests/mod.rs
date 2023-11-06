@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod linear_algebra_tests {
-    use crate::linear_algebra::{Matrix, MatrixData};
+    use crate::{Matrix, MatrixData};
 
     #[test]
     fn matrix_creation() {
@@ -231,6 +231,28 @@ mod linear_algebra_tests {
 
         assert_eq!(transposed_matrix.data[2][0], 5.0);
         assert_eq!(transposed_matrix.data[2][1], 3.0);
+    }
+
+    #[test]
+    fn matrix_is_equal() {
+        let a: MatrixData = vec![vec![1.0, 10.0, 5.0], vec![4.0, 9.0, 3.0]];
+        let b: MatrixData = vec![vec![1.0, 10.0, 5.0], vec![4.0, 9.0, 3.0]];
+
+        let matrix_a: Matrix = Matrix::new(a);
+        let matrix_b: Matrix = Matrix::new(b);
+        
+        assert_eq!(matrix_a.is_equal(&matrix_b), true);
+    }
+
+    #[test]
+    fn matrix_is_not_equal() {
+        let a: MatrixData = vec![vec![1.0, 10.0, 5.0], vec![4.0, 9.0, 3.0]];
+        let b: MatrixData = vec![vec![11.0, 10.0, 5.0], vec![4.0, 9.0, 3.0]];
+
+        let matrix_a: Matrix = Matrix::new(a);
+        let matrix_b: Matrix = Matrix::new(b);
+        
+        assert_eq!(matrix_a.is_equal(&matrix_b), false);
     }
 
     #[test]

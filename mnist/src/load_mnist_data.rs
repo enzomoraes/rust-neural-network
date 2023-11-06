@@ -12,7 +12,7 @@ pub struct MNIST {
 pub struct Image {
     rows: u32,
     columns: u32,
-    pub pixels: Vec<u8>,
+    pub pixels: Vec<f64>,
 }
 
 impl fmt::Display for Image {
@@ -25,8 +25,8 @@ impl fmt::Display for Image {
             if i % self.columns == 0 {
                 result.push('\n');
             }
-            result.push(match self.pixels[i as usize] {
-                0 => ' ',   // Background (white)
+            result.push(match (self.pixels[i as usize] * 255.0) as u8 {
+                0 => ' ', // Background (white)
                 255 => '█', // Foreground (black)
                 _ => '#',   // Other values
             });
@@ -73,7 +73,7 @@ fn read_images(filename: &str) -> Result<Vec<Image>> {
         images.push(Image {
             rows: num_rows,
             columns: num_columns,
-            pixels,
+            pixels: pixels.iter().map(|p| f64::from(*p) / 255.0).collect(),
         });
     }
 
@@ -99,32 +99,47 @@ pub fn load_data(directory: &str) -> MNIST {
     let train_images = read_images(format!("{}/train-images.idx3-ubyte", directory).as_str());
     let train_labels = read_labels(format!("{}/train-labels.idx1-ubyte", directory).as_str());
     let test_images = read_images(format!("{}/t10k-images.idx3-ubyte", directory).as_str());
-    let test_labels = read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
+    // let test_images2 = read_images(format!("{}/t10k-images.idx3-ubyte", directory).as_str());
+
+    let test_labels: std::result::Result<Vec<Label>, std::io::Error> =
+        read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
+    // let test_labels2: std::result::Result<Vec<Label>, std::io::Error> = read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
+
+    // println!("{}", test_images2.unwrap()[1000]);
+    // println!("{}", test_labels2.unwrap()[1000]);
 
     return MNIST {
         train_images: train_images
             .unwrap()
             .iter()
             .take(1000)
-            .map(|image| image.pixels.iter().map(|&pixel| pixel as f64).collect())
-            .collect(),
-        train_labels: train_labels
-            .unwrap()
-            .iter()
-            .take(1000)
-            .map(|label| vec![(label.label as f64) / 10.0])
+            .map(|image| image.pixels.clone())
             .collect(),
         test_images: test_images
             .unwrap()
             .iter()
             .take(1000)
-            .map(|image| image.pixels.iter().map(|&pixel| pixel as f64).collect())
+            .map(|image| image.pixels.clone())
+            .collect(),
+        train_labels: train_labels
+            .unwrap()
+            .iter()
+            .take(1000)
+            .map(|label| {
+                let mut inner_vec = vec![0.0; 10];
+                inner_vec[label.label as usize] = 1.0 as f64;
+                inner_vec
+            })
             .collect(),
         test_labels: test_labels
             .unwrap()
             .iter()
             .take(1000)
-            .map(|label| vec![(label.label as f64) / 10.0])
+            .map(|label| {
+                let mut inner_vec = vec![0.0; 10];
+                inner_vec[label.label as usize] = 1.0 as f64;
+                inner_vec
+            })
             .collect(),
     };
 }
