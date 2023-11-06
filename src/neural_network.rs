@@ -1,5 +1,13 @@
-use crate::linear_algebra::Matrix;
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
 
+use super::{activations::Activation, linear_algebra::Matrix};
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, json};
+
+#[derive(Serialize, Deserialize)]
 pub struct Layer {
     inputs: usize,
     outputs: usize,
@@ -39,25 +47,25 @@ impl Layer {
     }
 }
 
-pub struct Activation {
-    pub function: Box<dyn Fn(f64) -> f64>,
-    pub derivative: Box<dyn Fn(f64) -> f64>,
-}
-
-pub struct NeuralNetwork {
+pub struct NeuralNetwork<'a> {
     layers: Vec<Layer>,
     learning_rate: f64,
-    activation: Activation,
-    loss_function: Box<dyn Fn(f64) -> f64>,
+    activation: Activation<'a>,
+    loss_function: &'a dyn Fn(f64) -> f64,
 }
 
-impl NeuralNetwork {
-    pub fn new(
+#[derive(Serialize, Deserialize)]
+struct SavedNeuralNetwork {
+    layers: Vec<Layer>,
+}
+
+impl NeuralNetwork<'_> {
+    pub fn new<'a>(
         neurons_per_layer: Vec<usize>,
         learning_rate: f64,
-        activation: Activation,
-        loss_function: Box<dyn Fn(f64) -> f64>,
-    ) -> NeuralNetwork {
+        activation: Activation<'a>,
+        loss_function: &'a dyn Fn(f64) -> f64,
+    ) -> NeuralNetwork<'a> {
         let mut layers: Vec<Layer> = vec![];
 
         for i in 1..neurons_per_layer.len() {
@@ -74,7 +82,7 @@ impl NeuralNetwork {
 
     pub fn train(&mut self, inputs: Vec<Vec<f64>>, target: Vec<Vec<f64>>, epochs: usize) {
         for i in 1..=epochs {
-            if i % (1000) == 0 {
+            if i % (100) == 0 {
                 println!("Epoch {} of {}", i, epochs);
             }
             for j in 0..inputs.len() {
@@ -153,5 +161,43 @@ impl NeuralNetwork {
 
     fn gradient(&self, matrix: &Matrix) -> Matrix {
         return matrix.apply_function(&self.activation.derivative);
+    }
+
+    pub fn save(&self, file: String) {
+        let mut file = File::create(file).expect("Unable to touch save file");
+
+        file.write_all(
+            json!({
+              "layers": self.layers
+            })
+            .to_string()
+            .as_bytes(),
+        )
+        .expect("Unable to write to save file");
+    }
+
+    pub fn load(&mut self, file: String) {
+        let mut file = File::open(file).expect("Unable to open save file");
+        let mut buffer = String::new();
+
+        file.read_to_string(&mut buffer)
+            .expect("Unable to read save file");
+
+        let saved_data: SavedNeuralNetwork =
+            from_str(&buffer).expect("Unable to serialize save data");
+
+        let mut layers: Vec<Layer> = vec![];
+
+        for i in 0..self.layers.len() {
+            layers.push(Layer {
+                inputs: self.layers[i].inputs,
+                outputs: self.layers[i].outputs,
+                weights: Matrix::from(saved_data.layers[i].weights.clone()),
+                biases: Matrix::from(saved_data.layers[i].biases.clone()),
+                output: saved_data.layers[i].output.clone(),
+            })
+        }
+
+        self.layers = layers;
     }
 }

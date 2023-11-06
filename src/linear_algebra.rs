@@ -1,7 +1,9 @@
 use core::fmt;
 use rand::{thread_rng, Rng};
+use serde::{Serialize, Deserialize};
 
 #[derive(Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
