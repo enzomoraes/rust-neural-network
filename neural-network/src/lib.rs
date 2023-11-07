@@ -84,18 +84,24 @@ impl NeuralNetwork<'_> {
 
     pub fn train(&mut self, inputs: Vec<Vec<f64>>, target: Vec<Vec<f64>>, epochs: usize) {
         for i in 1..=epochs {
-            if i % (100) == 0 {
-                println!("Epoch {} of {}", i, epochs);
-            }
             let mut training_precision: f64 = 0.0;
             for j in 0..inputs.len() {
                 let predictions: Vec<f64> = self.feed_forward(inputs[j].clone());
-                if Matrix::new(vec![target[j].clone()])
-                    .is_equal(&Matrix::new(vec![predictions.clone()]))
+                // precision only works when there are more than 1 output
+                if NeuralNetwork::get_max_value_index(target[j].clone())
+                    .eq(&NeuralNetwork::get_max_value_index(predictions.clone()))
                 {
-                    training_precision += 1.0;
+                    training_precision += 1.0
                 }
                 self.back_propagate(predictions, target[j].clone(), inputs[j].clone());
+            }
+            if i % (100) == 0 {
+                println!(
+                    "Epoch {} of {}. Precision: {}%",
+                    i,
+                    epochs,
+                    (training_precision / inputs.len() as f64) * 100.0
+                );
             }
         }
     }
@@ -154,7 +160,7 @@ impl NeuralNetwork<'_> {
                 loss = self.layers[i]
                     .weights
                     .transpose()
-                    .apply_function(&self.loss_function)
+                    // .apply_function(&self.loss_function)
                     .multiply(&loss);
                 gradient = self.gradient(&self.layers[i - 1].output);
             }
@@ -163,7 +169,7 @@ impl NeuralNetwork<'_> {
 
     fn loss(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
         return target
-            .apply_function(&self.loss_function)
+            // .apply_function(&self.loss_function)
             .subtract(&predictions);
     }
 
@@ -171,6 +177,18 @@ impl NeuralNetwork<'_> {
         return matrix.apply_function(&self.activation.derivative);
     }
 
+    pub fn get_max_value_index(vector: Vec<f64>) -> usize {
+        let mut max_index = 0;
+        let mut max_value = vector[0];
+
+        for (index, &value) in vector.iter().enumerate() {
+            if value > max_value {
+                max_value = value;
+                max_index = index;
+            }
+        }
+        return max_index;
+    }
     pub fn save(&self, file: String) {
         let mut file = File::create(file).expect("Unable to touch save file");
 
