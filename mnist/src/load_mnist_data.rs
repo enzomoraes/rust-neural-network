@@ -3,16 +3,16 @@ use std::fs::File;
 use std::io::{Read, Result};
 
 pub struct MNIST {
-    pub train_images: Vec<Vec<f64>>,
-    pub train_labels: Vec<Vec<f64>>,
-    pub test_images: Vec<Vec<f64>>,
-    pub test_labels: Vec<Vec<f64>>,
+    pub train_images: Vec<Vec<f32>>,
+    pub train_labels: Vec<Vec<f32>>,
+    pub test_images: Vec<Vec<f32>>,
+    pub test_labels: Vec<Vec<f32>>,
 }
 
 pub struct Image {
     rows: u32,
     columns: u32,
-    pub pixels: Vec<f64>,
+    pub pixels: Vec<f32>,
 }
 
 impl fmt::Display for Image {
@@ -73,7 +73,7 @@ fn read_images(filename: &str) -> Result<Vec<Image>> {
         images.push(Image {
             rows: num_rows,
             columns: num_columns,
-            pixels: pixels.iter().map(|p| f64::from(*p) / 255.0).collect(),
+            pixels: pixels.iter().map(|p| f32::from(*p) / 255.0).collect(),
         });
     }
 
@@ -127,7 +127,7 @@ pub fn load_data(directory: &str) -> MNIST {
             .take(60000)
             .map(|label| {
                 let mut inner_vec = vec![0.0; 10];
-                inner_vec[label.label as usize] = 1.0 as f64;
+                inner_vec[label.label as usize] = 1.0 as f32;
                 inner_vec
             })
             .collect(),
@@ -137,7 +137,7 @@ pub fn load_data(directory: &str) -> MNIST {
             .take(10000)
             .map(|label| {
                 let mut inner_vec = vec![0.0; 10];
-                inner_vec[label.label as usize] = 1.0 as f64;
+                inner_vec[label.label as usize] = 1.0 as f32;
                 inner_vec
             })
             .collect(),

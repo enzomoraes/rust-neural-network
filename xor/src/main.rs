@@ -6,20 +6,20 @@ use linear_algebra::Matrix;
 fn main() {
     println!("Hello, world!");
     let activation = SIGMOID;
-    let loss_function = &|x: f64| x * x;
+    let loss_function = &|x: f32| x * x;
 
     // let mut network: NeuralNetwork =
     //     NeuralNetwork::new(vec![2, 3, 1], 0.2, activation, loss_function);
     let mut network = NeuralNetwork::new(vec![2, 3, 1], 0.2, activation, loss_function);
     network.load("./saved-network.json".to_string());
 
-    let inputs: Vec<Vec<f64>> = vec![
+    let inputs: Vec<Vec<f32>> = vec![
         vec![0.0, 0.0],
         vec![1.0, 0.0],
         vec![0.0, 1.0],
         vec![1.0, 1.0],
     ];
-    let target: Vec<Vec<f64>> = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
+    let target: Vec<Vec<f32>> = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
     network.train(inputs, target, 10000);
     network.save("./saved-network.json".to_string());
 

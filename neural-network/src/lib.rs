@@ -34,7 +34,7 @@ impl Layer {
         };
     }
 
-    pub fn feed_forward(&mut self, inputs: Vec<f64>) -> Vec<f64> {
+    pub fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
         // Convert the input vector to a matrix
         self.input = Matrix::new(vec![inputs]).transpose();
 
@@ -83,9 +83,9 @@ impl Layer {
 
 pub struct NeuralNetwork<'a> {
     layers: Vec<Layer>,
-    learning_rate: f64,
+    learning_rate: f32,
     activation: Activation<'a>,
-    loss_function: &'a dyn Fn(f64) -> f64,
+    loss_function: &'a dyn Fn(f32) -> f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -96,9 +96,9 @@ struct SavedNeuralNetwork {
 impl NeuralNetwork<'_> {
     pub fn new<'a>(
         neurons_per_layer: Vec<usize>,
-        learning_rate: f64,
+        learning_rate: f32,
         activation: Activation<'a>,
-        loss_function: &'a dyn Fn(f64) -> f64,
+        loss_function: &'a dyn Fn(f32) -> f32,
     ) -> NeuralNetwork<'a> {
         let mut layers: Vec<Layer> = vec![];
 
@@ -114,11 +114,11 @@ impl NeuralNetwork<'_> {
         };
     }
 
-    pub fn train(&mut self, inputs: Vec<Vec<f64>>, target: Vec<Vec<f64>>, epochs: usize) {
+    pub fn train(&mut self, inputs: Vec<Vec<f32>>, target: Vec<Vec<f32>>, epochs: usize) {
         for i in 1..=epochs {
-            let mut training_precision: f64 = 0.0;
+            let mut training_precision: f32 = 0.0;
             for j in 0..inputs.len() {
-                let mut predictions: Vec<f64> = inputs[j].clone();
+                let mut predictions: Vec<f32> = inputs[j].clone();
                 for layer_index in 0..self.layers.len() {
                     predictions = self.layers[layer_index].feed_forward(predictions);
                 }
@@ -145,14 +145,14 @@ impl NeuralNetwork<'_> {
                     "Epoch {} of {}. Precision: {}%",
                     i,
                     epochs,
-                    (training_precision / inputs.len() as f64) * 100.0
+                    (training_precision / inputs.len() as f32) * 100.0
                 );
             }
         }
     }
 
-    pub fn try_to_predict(&mut self, inputs: Vec<f64>) -> Vec<f64> {
-        let mut predictions: Vec<f64> = inputs;
+    pub fn try_to_predict(&mut self, inputs: Vec<f32>) -> Vec<f32> {
+        let mut predictions: Vec<f32> = inputs;
         for layer_index in 0..self.layers.len() {
             predictions = self.layers[layer_index].feed_forward(predictions);
         }
@@ -162,10 +162,10 @@ impl NeuralNetwork<'_> {
     fn loss_derivative(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
         return target
             .subtract(&predictions)
-            .apply_function(&|x| 2.0 * x / target.rows as f64);
+            .apply_function(&|x| 2.0 * x / target.rows as f32);
     }
 
-    pub fn get_max_value_index(vector: Vec<f64>) -> usize {
+    pub fn get_max_value_index(vector: Vec<f32>) -> usize {
         let mut max_index = 0;
         let mut max_value = vector[0];
 

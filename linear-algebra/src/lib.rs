@@ -10,7 +10,7 @@ pub struct Matrix {
     pub data: MatrixData,
 }
 
-pub type MatrixData = Vec<Vec<f64>>;
+pub type MatrixData = Vec<Vec<f32>>;
 
 impl Matrix {
     pub fn new(data: MatrixData) -> Matrix {
@@ -29,7 +29,7 @@ impl Matrix {
         let mut matrix = Matrix::zero(rows, cols);
         for i in 0..rows {
             for j in 0..cols {
-                matrix.data[i][j] = thread_rng().gen::<f64>() * 2.0 - 1.0;
+                matrix.data[i][j] = thread_rng().gen::<f32>() * 2.0 - 1.0;
             }
         }
         return matrix;
@@ -88,7 +88,7 @@ impl Matrix {
         let mut multiplied_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
         for i in 0..self.rows {
             for j in 0..matrix_b.cols {
-                let mut sum: f64 = 0.0;
+                let mut sum: f32 = 0.0;
                 for k in 0..self.cols {
                     sum += self.data[i][k] * matrix_b.data[k][j];
                 }
@@ -130,7 +130,7 @@ impl Matrix {
         return true;
     }
 
-    pub fn apply_function(&self, function: &dyn Fn(f64) -> f64) -> Matrix {
+    pub fn apply_function(&self, function: &dyn Fn(f32) -> f32) -> Matrix {
         return Matrix::new(
             self.data
                 .clone()
