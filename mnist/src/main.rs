@@ -1,7 +1,6 @@
 mod load_mnist_data;
 
 use load_mnist_data::load_data;
-use neural_network;
 use neural_network::NeuralNetwork;
 
 use neural_network::activations::SIGMOID;
@@ -22,7 +21,7 @@ fn main() {
     let inputs_test: Vec<Vec<f64>> = data.test_images;
     let target_test: Vec<Vec<f64>> = data.test_labels;
 
-    network.train(inputs_train, target_train, 1000);
+    network.train(inputs_train, target_train, 10);
     network.save("./saved-network-mnist.json".to_string());
 
     let mut testing_precision: f64 = 0.0;
@@ -34,7 +33,7 @@ fn main() {
         if actual.eq(&predicted) {
             testing_precision += 1.0;
         }
-        println!("{} Prediction {} x {} Actual", actual.eq(&predicted), predicted, actual);
+        // println!("{} Prediction {} x {} Actual", actual.eq(&predicted), predicted, actual);
     }
     println!("Testing precision: {}", (testing_precision / inputs_test.len() as f64) * 100.0)
 }

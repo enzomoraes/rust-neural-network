@@ -25,3 +25,8 @@ pub const RELU: Activation = Activation {
 	function: &|x| x.max(0.0),
 	derivative: &|x| if x > 0.0 { 1.0 } else { 0.0 },
 };
+
+pub const SOFTMAX: Activation = Activation {
+  function: &|x| x.exp() / (1.0 + x.exp()),
+  derivative: &|x| x * (1.0 - x),
+};

@@ -16,6 +16,7 @@ pub struct Layer {
     weights: Matrix,
     biases: Matrix,
     output: Matrix,
+    input: Matrix,
 }
 
 impl Layer {
@@ -29,7 +30,46 @@ impl Layer {
             weights,
             biases,
             output: Matrix::zero(inputs, 1),
+            input: Matrix::zero(outputs, 1),
         };
+    }
+
+    pub fn feed_forward(&mut self, inputs: Vec<f64>) -> Vec<f64> {
+        // Convert the input vector to a matrix
+        self.input = Matrix::new(vec![inputs]).transpose();
+
+        // Calculate the weighted sum of the inputs
+        let weighted_sums: Matrix = self
+            .weights
+            .multiply(&self.input)
+            .add(&self.biases)
+            .apply_function(activations::SIGMOID.function);
+
+        self.output = weighted_sums.clone();
+        // Return the output vector
+        return weighted_sums.transpose().data[0].clone();
+    }
+
+    pub fn back_propagate(&mut self, loss: &Matrix) -> Matrix {
+        // Calculate the error for this layer
+        let error: Matrix =
+            loss.hadamard_product(&self.output.apply_function(activations::SIGMOID.derivative));
+
+        // Calculate the gradient of the loss with respect to the weights
+        let weight_gradients: Matrix = error.multiply(&self.input.transpose());
+
+        // Calculate the gradient of the loss with respect to the biases
+        let bias_gradients: Matrix = error.clone();
+
+        // Update the weights and biases
+        self.add_to_weights(&weight_gradients.apply_function(&|x| x * 0.3));
+        self.add_to_biases(&bias_gradients.apply_function(&|x| x * 0.3));
+
+        // Calculate the error for the previous layer
+        let previous_layer_error: Matrix = self.weights.transpose().multiply(&error);
+
+        // Return the error for the previous layer
+        return previous_layer_error;
     }
 
     pub fn add_to_weights(&mut self, matrix: &Matrix) {
@@ -38,14 +78,6 @@ impl Layer {
 
     pub fn add_to_biases(&mut self, matrix: &Matrix) {
         self.biases = self.biases.add(&matrix);
-    }
-
-    pub fn weigh_inputs(&self, inputs: &Matrix) -> Matrix {
-        return self.weights.multiply(&inputs).add(&self.biases);
-    }
-
-    fn set_output(&mut self, clone: Matrix) {
-        self.output = clone;
     }
 }
 
@@ -86,16 +118,29 @@ impl NeuralNetwork<'_> {
         for i in 1..=epochs {
             let mut training_precision: f64 = 0.0;
             for j in 0..inputs.len() {
-                let predictions: Vec<f64> = self.feed_forward(inputs[j].clone());
-                // precision only works when there are more than 1 output
-                if NeuralNetwork::get_max_value_index(target[j].clone())
-                    .eq(&NeuralNetwork::get_max_value_index(predictions.clone()))
-                {
-                    training_precision += 1.0
+                let mut predictions: Vec<f64> = inputs[j].clone();
+                for layer_index in 0..self.layers.len() {
+                    predictions = self.layers[layer_index].feed_forward(predictions);
                 }
-                self.back_propagate(predictions, target[j].clone(), inputs[j].clone());
+                let mut loss: Matrix = self
+                    .loss_derivative(
+                        &Matrix::new(vec![target[j].clone()]),
+                        &Matrix::new(vec![predictions.clone()]),
+                    )
+                    .transpose();
+
+                // Backpropagate using the average loss
+                for layer_index in (0..self.layers.len()).rev() {
+                    loss = self.layers[layer_index].back_propagate(&loss);
+                }
+
+                if NeuralNetwork::get_max_value_index(predictions)
+                    .eq(&NeuralNetwork::get_max_value_index(target[j].clone()))
+                {
+                    training_precision += 1.0;
+                }
             }
-            if i % (100) == 0 {
+            if i % (1) == 0 {
                 println!(
                     "Epoch {} of {}. Precision: {}%",
                     i,
@@ -107,74 +152,17 @@ impl NeuralNetwork<'_> {
     }
 
     pub fn try_to_predict(&mut self, inputs: Vec<f64>) -> Vec<f64> {
-        return self.feed_forward(inputs);
+        let mut predictions: Vec<f64> = inputs;
+        for layer_index in 0..self.layers.len() {
+            predictions = self.layers[layer_index].feed_forward(predictions);
+        }
+        return predictions;
     }
 
-    fn feed_forward(&mut self, inputs: Vec<f64>) -> Vec<f64> {
-        if inputs.len() != self.layers[0].inputs {
-            panic!("Inputs length does not match with neural network");
-        }
-
-        let mut data: Matrix = Matrix::new(vec![inputs]).transpose();
-
-        for i in 0..self.layers.len() {
-            data = self.layers[i]
-                .weigh_inputs(&data)
-                .apply_function(&self.activation.function);
-            self.layers[i].set_output(data.clone());
-        }
-
-        return data.transpose().data[0].to_owned();
-    }
-
-    fn back_propagate(&mut self, predictions: Vec<f64>, target: Vec<f64>, inputs: Vec<f64>) {
-        if target.len() != self.layers[self.layers.len() - 1].outputs {
-            panic!("Invalid targets length");
-        }
-
-        let mut loss = self
-            .loss(
-                &Matrix::new(vec![target]),
-                &Matrix::new(vec![predictions.clone()]),
-            )
-            .transpose();
-
-        let size: usize = self.layers.len();
-        let mut gradient: Matrix =
-            self.gradient(&Matrix::new(vec![predictions.clone()]).transpose());
-
-        for i in (0..size).rev() {
-            gradient = gradient
-                .hadamard_product(&loss)
-                .apply_function(&|x| x * self.learning_rate);
-
-            if i == 0 {
-                let gradient_weights = gradient.multiply(&Matrix::new(vec![inputs.clone()]));
-                self.layers[i].add_to_weights(&gradient_weights);
-                self.layers[i].add_to_biases(&gradient);
-            } else {
-                let gradient_weights = gradient.multiply(&self.layers[i - 1].output.transpose());
-                self.layers[i].add_to_weights(&gradient_weights);
-                self.layers[i].add_to_biases(&gradient);
-
-                loss = self.layers[i]
-                    .weights
-                    .transpose()
-                    // .apply_function(&self.loss_function)
-                    .multiply(&loss);
-                gradient = self.gradient(&self.layers[i - 1].output);
-            }
-        }
-    }
-
-    fn loss(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
+    fn loss_derivative(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
         return target
-            // .apply_function(&self.loss_function)
-            .subtract(&predictions);
-    }
-
-    fn gradient(&self, matrix: &Matrix) -> Matrix {
-        return matrix.apply_function(&self.activation.derivative);
+            .subtract(&predictions)
+            .apply_function(&|x| 2.0 * x / target.rows as f64);
     }
 
     pub fn get_max_value_index(vector: Vec<f64>) -> usize {
@@ -189,6 +177,7 @@ impl NeuralNetwork<'_> {
         }
         return max_index;
     }
+
     pub fn save(&self, file: String) {
         let mut file = File::create(file).expect("Unable to touch save file");
 
@@ -221,6 +210,7 @@ impl NeuralNetwork<'_> {
                 weights: Matrix::from(saved_data.layers[i].weights.clone()),
                 biases: Matrix::from(saved_data.layers[i].biases.clone()),
                 output: saved_data.layers[i].output.clone(),
+                input: saved_data.layers[i].input.clone(),
             })
         }
 

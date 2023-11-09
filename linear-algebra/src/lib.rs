@@ -79,7 +79,10 @@ impl Matrix {
 
     pub fn multiply(&self, matrix_b: &Matrix) -> Matrix {
         if self.cols != matrix_b.rows {
-            panic!("Cannot multiply matrices.")
+            panic!(
+                "Cannot multiply matrices. {}x{} & {}x{}",
+                self.rows, self.cols, matrix_b.rows, matrix_b.cols
+            )
         };
 
         let mut multiplied_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
@@ -97,7 +100,10 @@ impl Matrix {
 
     pub fn hadamard_product(&self, matrix_b: &Matrix) -> Matrix {
         if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!("Cannot apply hadamard product to matrices.")
+            panic!(
+                "Cannot apply hadamard product to matrices. {}x{} & {}x{}",
+                self.rows, self.cols, matrix_b.rows, matrix_b.cols
+            )
         };
 
         let mut multiplied_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);

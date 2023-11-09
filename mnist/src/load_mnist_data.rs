@@ -112,7 +112,7 @@ pub fn load_data(directory: &str) -> MNIST {
         train_images: train_images
             .unwrap()
             .iter()
-            .take(10000)
+            .take(60000)
             .map(|image| image.pixels.clone())
             .collect(),
         test_images: test_images
@@ -124,7 +124,7 @@ pub fn load_data(directory: &str) -> MNIST {
         train_labels: train_labels
             .unwrap()
             .iter()
-            .take(10000)
+            .take(60000)
             .map(|label| {
                 let mut inner_vec = vec![0.0; 10];
                 inner_vec[label.label as usize] = 1.0 as f64;
