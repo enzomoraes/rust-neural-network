@@ -181,7 +181,7 @@ impl NeuralNetwork<'_> {
     }
 
     pub fn save(&self, file: String) {
-        let mut file = File::create(file).expect("Unable to touch save file");
+        let mut file = File::create(file).expect("Unable to create file");
 
         file.write_all(
             json!({
@@ -190,18 +190,18 @@ impl NeuralNetwork<'_> {
             .to_string()
             .as_bytes(),
         )
-        .expect("Unable to write to save file");
+        .expect("Unable to write to file");
     }
 
     pub fn load(&mut self, file: String) {
-        let mut file = File::open(file).expect("Unable to open save file");
+        let mut file = File::open(file).expect("Unable to load saved file");
         let mut buffer = String::new();
 
         file.read_to_string(&mut buffer)
-            .expect("Unable to read save file");
+            .expect("Unable to read saved file");
 
         let saved_data: SavedNeuralNetwork =
-            from_str(&buffer).expect("Unable to serialize save data");
+            from_str(&buffer).expect("Unable to serialize saved data");
 
         let mut layers: Vec<Layer> = vec![];
 
