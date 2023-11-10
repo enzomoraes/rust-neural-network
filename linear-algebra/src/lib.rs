@@ -1,5 +1,5 @@
 use rand::Rng;
-
+mod linear_algebra_tests;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
