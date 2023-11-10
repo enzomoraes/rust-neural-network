@@ -1,8 +1,5 @@
 mod load_mnist_data;
 
-use std::thread;
-use std::time::{Duration, Instant};
-
 use load_mnist_data::load_data;
 use neural_network::NeuralNetwork;
 
@@ -15,8 +12,8 @@ fn main() {
 
     let mut network: NeuralNetwork =
         NeuralNetwork::new(vec![784, 10, 10], 0.03, activation, loss_function);
-    // let mut network = NeuralNetwork::new(vec![784, 10, 10], 0.03, activation, loss_function);
-    // network.load("./saved-network-mnist.json".to_string());
+    network.load("./saved-network-mnist.json".to_string());
+
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
     let inputs_train: Vec<Vec<f32>> = data.train_images;
@@ -36,7 +33,6 @@ fn main() {
         if actual.eq(&predicted) {
             testing_precision += 1.0;
         }
-        // println!("{} Prediction {} x {} Actual", actual.eq(&predicted), predicted, actual);
     }
     println!(
         "Testing precision: {}",

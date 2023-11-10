@@ -7,6 +7,7 @@ use serde_json::{from_str, json};
 use std::{
     fs::File,
     io::{Read, Write},
+    time::Instant,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -29,14 +30,14 @@ impl Layer {
             outputs,
             weights,
             biases,
-            output: Matrix::zero(inputs, 1),
-            input: Matrix::zero(outputs, 1),
+            output: Matrix::zeros(inputs, 1),
+            input: Matrix::zeros(outputs, 1),
         };
     }
 
     pub fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
         // Convert the input vector to a matrix
-        self.input = Matrix::new(vec![inputs]).transpose();
+        self.input = Matrix::from(inputs);
 
         // Calculate the weighted sum of the inputs
         let weighted_sums: Matrix = self
@@ -47,7 +48,7 @@ impl Layer {
 
         self.output = weighted_sums.clone();
         // Return the output vector
-        return weighted_sums.transpose().data[0].clone();
+        return weighted_sums.data.clone();
     }
 
     pub fn back_propagate(&mut self, loss: &Matrix) -> Matrix {
@@ -115,6 +116,8 @@ impl NeuralNetwork<'_> {
     }
 
     pub fn train(&mut self, inputs: Vec<Vec<f32>>, target: Vec<Vec<f32>>, epochs: usize) {
+        let start_time = Instant::now();
+
         for i in 1..=epochs {
             let mut training_precision: f32 = 0.0;
             for j in 0..inputs.len() {
@@ -122,12 +125,10 @@ impl NeuralNetwork<'_> {
                 for layer_index in 0..self.layers.len() {
                     predictions = self.layers[layer_index].feed_forward(predictions);
                 }
-                let mut loss: Matrix = self
-                    .loss_derivative(
-                        &Matrix::new(vec![target[j].clone()]),
-                        &Matrix::new(vec![predictions.clone()]),
-                    )
-                    .transpose();
+                let mut loss: Matrix = self.loss_derivative(
+                    &Matrix::from(target[j].clone()),
+                    &Matrix::from(predictions.clone()),
+                );
 
                 // Backpropagate using the average loss
                 for layer_index in (0..self.layers.len()).rev() {
@@ -149,6 +150,7 @@ impl NeuralNetwork<'_> {
                 );
             }
         }
+        println!("Time elapsed in training -> {:?} miliseconds", start_time.elapsed().as_millis());
     }
 
     pub fn try_to_predict(&mut self, inputs: Vec<f32>) -> Vec<f32> {

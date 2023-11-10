@@ -8,9 +8,7 @@ fn main() {
     let activation = SIGMOID;
     let loss_function = &|x: f32| x * x;
 
-    // let mut network: NeuralNetwork =
-    //     NeuralNetwork::new(vec![2, 3, 1], 0.2, activation, loss_function);
-    let mut network = NeuralNetwork::new(vec![2, 3, 1], 0.2, activation, loss_function);
+    let mut network = NeuralNetwork::new(vec![2, 3, 1], 1.0, activation, loss_function);
     network.load("./saved-network.json".to_string());
 
     let inputs: Vec<Vec<f32>> = vec![
@@ -20,7 +18,7 @@ fn main() {
         vec![1.0, 1.0],
     ];
     let target: Vec<Vec<f32>> = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
-    network.train(inputs, target, 10000);
+    network.train(inputs, target, 1000);
     network.save("./saved-network.json".to_string());
 
     let prediction1 = network.try_to_predict(vec![0.0, 0.0]);
@@ -28,8 +26,8 @@ fn main() {
     let prediction3 = network.try_to_predict(vec![0.0, 1.0]);
     let prediction4 = network.try_to_predict(vec![1.0, 1.0]);
 
-    println!("{}", Matrix::new(vec![prediction1]));
-    println!("{}", Matrix::new(vec![prediction2]));
-    println!("{}", Matrix::new(vec![prediction3]));
-    println!("{}", Matrix::new(vec![prediction4]));
+    println!("{}", Matrix::from(prediction1));
+    println!("{}", Matrix::from(prediction2));
+    println!("{}", Matrix::from(prediction3));
+    println!("{}", Matrix::from(prediction4));
 }

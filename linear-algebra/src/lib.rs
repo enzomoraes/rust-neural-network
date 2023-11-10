@@ -1,162 +1,180 @@
-mod linear_algebra_tests;
-use core::fmt;
-use rand::{thread_rng, Rng};
+use rand::Rng;
+
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
-    pub data: MatrixData,
+    pub data: Vec<f32>,
 }
 
-pub type MatrixData = Vec<Vec<f32>>;
-
 impl Matrix {
-    pub fn new(data: MatrixData) -> Matrix {
+    pub fn hadamard_product(&self, other: &Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!(
+                "Cannot apply hadamard product to matrices. {}x{} & {}x{}",
+                self.rows, self.cols, other.rows, other.cols
+            )
+        }
+
+        let mut result_data = vec![0.0; self.cols * self.rows];
+        for i in 0..self.data.len() {
+            // double check this
+            result_data[i] = self.data[i] * other.data[i]
+        }
+
         Matrix {
-            rows: data.len(),
-            cols: data[0].len(),
-            data,
+            rows: self.rows,
+            cols: self.cols,
+            data: result_data,
         }
     }
-    pub fn zero(rows: usize, cols: usize) -> Matrix {
-        let data: MatrixData = vec![vec![0.0; cols]; rows];
-        return Matrix::new(data);
+    pub fn random(rows: usize, cols: usize) -> Matrix {
+        let mut buffer = Vec::<f32>::with_capacity(rows * cols);
+
+        for _ in 0..rows * cols {
+            let num = rand::thread_rng().gen::<f32>() * 2.0 - 1.0;
+
+            buffer.push(num);
+        }
+
+        Matrix {
+            rows,
+            cols,
+            data: buffer,
+        }
     }
 
-    pub fn random(rows: usize, cols: usize) -> Matrix {
-        let mut matrix = Matrix::zero(rows, cols);
-        for i in 0..rows {
-            for j in 0..cols {
-                matrix.data[i][j] = thread_rng().gen::<f32>() * 2.0 - 1.0;
+    pub fn new(rows: usize, cols: usize, data: Vec<f32>) -> Matrix {
+        assert!(data.len() - 1 != rows * cols, "Invalid Size");
+        Matrix { rows, cols, data }
+    }
+
+    pub fn zeros(rows: usize, cols: usize) -> Matrix {
+        Matrix {
+            rows,
+            cols,
+            data: vec![0.0; cols * rows],
+        }
+    }
+
+    pub fn add(&self, other: &Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!(
+                "Cannot add matrices. {}x{} & {}x{}",
+                self.rows, self.cols, other.rows, other.cols
+            )
+        }
+
+        let mut buffer = Vec::<f32>::with_capacity(self.rows * self.cols);
+
+        for i in 0..self.data.len() {
+            let result = self.data[i] + other.data[i];
+
+            buffer.push(result);
+        }
+
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data: buffer,
+        }
+    }
+
+    pub fn subtract(&self, other: &Matrix) -> Matrix {
+        assert!(
+            self.rows == other.rows && self.cols == other.cols,
+            "Cannot subtract matrices with different dimensions"
+        );
+
+        let mut buffer = Vec::<f32>::with_capacity(self.rows * self.cols);
+
+        for i in 0..self.data.len() {
+            let result = self.data[i] - other.data[i];
+
+            buffer.push(result);
+        }
+
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data: buffer,
+        }
+    }
+
+    pub fn multiply(&self, other: &Matrix) -> Matrix {
+        if self.cols != other.rows {
+            panic!(
+                "Cannot multiply matrices. {}x{} & {}x{}",
+                self.rows, self.cols, other.rows, other.cols
+            )
+        }
+
+        let mut result_data = vec![0.0; self.rows * other.cols];
+
+        for i in 0..self.rows {
+            for j in 0..other.cols {
+                let mut sum = 0.0;
+                for k in 0..self.cols {
+                    sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
+                }
+                result_data[i * other.cols + j] = sum;
             }
         }
-        return matrix;
+
+        Matrix {
+            rows: self.rows,
+            cols: other.cols,
+            data: result_data,
+        }
     }
 
     pub fn transpose(&self) -> Matrix {
-        let mut transposed_matrix = Matrix::zero(self.cols, self.rows);
+        let mut buffer = vec![0.0; self.cols * self.rows];
 
         for i in 0..self.rows {
             for j in 0..self.cols {
-                transposed_matrix.data[j][i] = self.data[i][j]
+                buffer[j * self.rows + i] = self.data[i * self.cols + j];
             }
         }
-        return transposed_matrix;
+
+        Matrix {
+            rows: self.cols,
+            cols: self.rows,
+            data: buffer,
+        }
     }
 
-    pub fn add(&self, matrix_b: &Matrix) -> Matrix {
-        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!(
-                "Cannot add matrices. {}x{} & {}x{}",
-                self.rows, self.cols, matrix_b.rows, matrix_b.cols
-            )
+    pub fn apply_function(&self, func: &dyn Fn(f32) -> f32) -> Matrix {
+        let a: Vec<f32> = self.data.iter().map(|&val| func(val)).collect();
+        return Matrix {
+            cols: self.cols,
+            rows: self.rows,
+            data: a,
         };
-
-        let mut added_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
-        for i in 0..added_matrix.rows {
-            for j in 0..added_matrix.cols {
-                added_matrix.data[i][j] = self.data[i][j] + matrix_b.data[i][j];
-            }
-        }
-        return added_matrix;
-    }
-
-    pub fn subtract(&self, matrix_b: &Matrix) -> Matrix {
-        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!("Cannot subtract matrices.")
-        };
-
-        let mut subtracted_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
-        for i in 0..subtracted_matrix.rows {
-            for j in 0..subtracted_matrix.cols {
-                subtracted_matrix.data[i][j] = self.data[i][j] - matrix_b.data[i][j];
-            }
-        }
-        return subtracted_matrix;
-    }
-
-    pub fn multiply(&self, matrix_b: &Matrix) -> Matrix {
-        if self.cols != matrix_b.rows {
-            panic!(
-                "Cannot multiply matrices. {}x{} & {}x{}",
-                self.rows, self.cols, matrix_b.rows, matrix_b.cols
-            )
-        };
-
-        let mut multiplied_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
-        for i in 0..self.rows {
-            for j in 0..matrix_b.cols {
-                let mut sum: f32 = 0.0;
-                for k in 0..self.cols {
-                    sum += self.data[i][k] * matrix_b.data[k][j];
-                }
-                multiplied_matrix.data[i][j] = sum;
-            }
-        }
-        return multiplied_matrix;
-    }
-
-    pub fn hadamard_product(&self, matrix_b: &Matrix) -> Matrix {
-        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            panic!(
-                "Cannot apply hadamard product to matrices. {}x{} & {}x{}",
-                self.rows, self.cols, matrix_b.rows, matrix_b.cols
-            )
-        };
-
-        let mut multiplied_matrix: Matrix = Matrix::zero(self.rows, matrix_b.cols);
-        for i in 0..multiplied_matrix.rows {
-            for j in 0..multiplied_matrix.cols {
-                multiplied_matrix.data[i][j] = self.data[i][j] * matrix_b.data[i][j];
-            }
-        }
-        return multiplied_matrix;
-    }
-
-    pub fn is_equal(&self, matrix_b: &Matrix) -> bool {
-        if self.rows != matrix_b.rows || self.cols != matrix_b.cols {
-            return false;
-        };
-
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                if !self.data[i][j].eq(&matrix_b.data[i][j]) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    pub fn apply_function(&self, function: &dyn Fn(f32) -> f32) -> Matrix {
-        return Matrix::new(
-            self.data
-                .clone()
-                .into_iter()
-                .map(|row| row.into_iter().map(|value| function(value)).collect())
-                .collect(),
-        );
     }
 }
 
 impl fmt::Display for Matrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Find the maximum width of any element in the matrix
         let max_width = self
             .data
             .iter()
-            .flatten()
-            .map(|&x| x.to_string().len())
+            .map(|f| f.to_string().len())
             .max()
             .unwrap_or(0);
-
+          
         for i in 0..self.rows {
             write!(f, "|")?;
             for j in 0..self.cols {
                 // std::fmt fill/alignment
-                let cell_str = format!("{:^width$}", self.data[i][j], width = max_width);
+                let cell_str = format!(
+                    "{:^width$}",
+                    self.data[i * self.cols + j],
+                    width = max_width
+                );
                 write!(f, "{}", cell_str)?;
                 if j < self.cols - 1 {
                     // Print a whitespace between values in the same row
@@ -165,6 +183,20 @@ impl fmt::Display for Matrix {
             }
             writeln!(f, "|")?;
         }
-        return write!(f, "");
+        write!(f, "");
+        Ok(())
+    }
+}
+
+impl From<Vec<f32>> for Matrix {
+    /// This method will always return a matrix with rows = vec.len() and cols = 1
+    fn from(vec: Vec<f32>) -> Self {
+        let rows = vec.len();
+        let cols = 1;
+        Matrix {
+            rows,
+            cols,
+            data: vec,
+        }
     }
 }
