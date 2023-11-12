@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 linear-algebra = {path = "../linear-algebra"}
+ndarray = "0.15.6"
 neural-network = {path = "../neural-network"}

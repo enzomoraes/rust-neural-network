@@ -183,7 +183,7 @@ impl fmt::Display for Matrix {
             }
             writeln!(f, "|")?;
         }
-        write!(f, "");
+        write!(f, "")?;
         Ok(())
     }
 }

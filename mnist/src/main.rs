@@ -1,6 +1,7 @@
 mod load_mnist_data;
 
 use load_mnist_data::load_data;
+use ndarray::Array2;
 use neural_network::NeuralNetwork;
 
 use neural_network::activations::SIGMOID;
@@ -8,10 +9,9 @@ use neural_network::activations::SIGMOID;
 fn main() {
     println!("Hello, world!");
     let activation = SIGMOID;
-    let loss_function = &|x: f32| x * x;
 
     let mut network: NeuralNetwork =
-        NeuralNetwork::new(vec![784, 28, 10], 0.03, activation, loss_function);
+        NeuralNetwork::new(vec![784, 10, 10], 0.03, activation);
     // network.load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
@@ -22,15 +22,19 @@ fn main() {
     let target_test: Vec<Vec<f32>> = data.test_labels;
 
     network.train(inputs_train, target_train, 10);
-    network.save("./saved-network-mnist.json".to_string());
+    network.save("./saved-network-mnist-10.json".to_string());
 
     let mut testing_precision: f32 = 0.0;
 
     for i in 0..inputs_test.len() {
-        let prediction1 = network.try_to_predict(inputs_test[i].clone());
-        let actual = NeuralNetwork::get_max_value_index(target_test[i].clone());
-        let predicted = NeuralNetwork::get_max_value_index(prediction1);
-        if actual.eq(&predicted) {
+        let prediction1 = network.try_to_predict(
+            Array2::from_shape_vec((inputs_test[i].len(), 1), inputs_test[i].clone()).unwrap(),
+        );
+        if NeuralNetwork::find_max_index_and_value(&prediction1).eq(
+            &NeuralNetwork::find_max_index_and_value(
+                &Array2::from_shape_vec((target_test[i].len(), 1), target_test[i].clone()).unwrap(),
+            ),
+        ) {
             testing_precision += 1.0;
         }
     }

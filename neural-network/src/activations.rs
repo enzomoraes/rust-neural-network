@@ -6,6 +6,14 @@ pub struct Activation<'a> {
     pub derivative: &'a dyn Fn(f32) -> f32,
 }
 
+impl<'a> Default for Activation<'a> {
+    fn default() -> Self {
+        // You may need to decide what to do here based on your use case.
+        // For now, I'm providing a placeholder implementation.
+        SIGMOID
+    }
+}
+
 pub const IDENTITY: Activation = Activation {
     function: &|x| x,
     derivative: &|_| 1.0,
