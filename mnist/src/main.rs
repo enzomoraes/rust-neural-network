@@ -12,7 +12,7 @@ fn main() {
 
     let mut network: NeuralNetwork =
         NeuralNetwork::new(vec![784, 28, 10], 0.03, activation, loss_function);
-    // network.load("./saved-network-mnist.json".to_string());
+    network.load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
