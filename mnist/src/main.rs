@@ -9,7 +9,7 @@ use neural_network::activations::SIGMOID;
 
 fn main() {
     println!("Hello, world!");
-    env::set_var("RAYON_NUM_THREADS", "8");
+    env::set_var("RAYON_NUM_THREADS", "4");
     let activation = SIGMOID;
     let loss_function = &|x: f32| x * x;
 
