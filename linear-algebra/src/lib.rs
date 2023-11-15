@@ -1,7 +1,11 @@
+extern crate rayon;
+
 use rand::Rng;
 mod linear_algebra_tests;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use rayon::prelude::*;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Matrix {
@@ -19,11 +23,16 @@ impl Matrix {
             )
         }
 
-        let mut result_data = vec![0.0; self.cols * self.rows];
-        for i in 0..self.data.len() {
-            // double check this
-            result_data[i] = self.data[i] * other.data[i]
-        }
+        let mut result_data = vec![0.0; self.rows * self.cols];
+
+        result_data
+            .par_chunks_mut(self.cols)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..self.cols {
+                    result_row[j] = self.data[i * self.cols + j] * other.data[i * self.cols + j];
+                }
+            });
 
         Matrix {
             rows: self.rows,
@@ -31,6 +40,7 @@ impl Matrix {
             data: result_data,
         }
     }
+
     pub fn random(rows: usize, cols: usize) -> Matrix {
         let mut buffer = Vec::<f32>::with_capacity(rows * cols);
 
@@ -68,18 +78,21 @@ impl Matrix {
             )
         }
 
-        let mut buffer = Vec::<f32>::with_capacity(self.rows * self.cols);
+        let mut result_data = vec![0.0; self.rows * self.cols];
 
-        for i in 0..self.data.len() {
-            let result = self.data[i] + other.data[i];
-
-            buffer.push(result);
-        }
+        result_data
+            .par_chunks_mut(self.cols)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..self.cols {
+                    result_row[j] = self.data[i * self.cols + j] + other.data[i * self.cols + j];
+                }
+            });
 
         Matrix {
             rows: self.rows,
             cols: self.cols,
-            data: buffer,
+            data: result_data,
         }
     }
 
@@ -89,18 +102,21 @@ impl Matrix {
             "Cannot subtract matrices with different dimensions"
         );
 
-        let mut buffer = Vec::<f32>::with_capacity(self.rows * self.cols);
+        let mut result_data = vec![0.0; self.rows * self.cols];
 
-        for i in 0..self.data.len() {
-            let result = self.data[i] - other.data[i];
-
-            buffer.push(result);
-        }
+        result_data
+            .par_chunks_mut(self.cols)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..self.cols {
+                    result_row[j] = self.data[i * self.cols + j] - other.data[i * self.cols + j];
+                }
+            });
 
         Matrix {
             rows: self.rows,
             cols: self.cols,
-            data: buffer,
+            data: result_data,
         }
     }
 
@@ -114,15 +130,18 @@ impl Matrix {
 
         let mut result_data = vec![0.0; self.rows * other.cols];
 
-        for i in 0..self.rows {
-            for j in 0..other.cols {
-                let mut sum = 0.0;
-                for k in 0..self.cols {
-                    sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
+        result_data
+            .par_chunks_mut(other.cols)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..other.cols {
+                    let mut sum = 0.0;
+                    for k in 0..self.cols {
+                        sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
+                    }
+                    result_row[j] = sum;
                 }
-                result_data[i * other.cols + j] = sum;
-            }
-        }
+            });
 
         Matrix {
             rows: self.rows,
@@ -165,7 +184,7 @@ impl fmt::Display for Matrix {
             .map(|f| f.to_string().len())
             .max()
             .unwrap_or(0);
-          
+
         for i in 0..self.rows {
             write!(f, "|")?;
             for j in 0..self.cols {
