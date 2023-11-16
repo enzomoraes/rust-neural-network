@@ -5,16 +5,11 @@ use std::env;
 use load_mnist_data::load_data;
 use neural_network::NeuralNetwork;
 
-use neural_network::activations::SIGMOID;
-
 fn main() {
     println!("Hello, world!");
     env::set_var("RAYON_NUM_THREADS", "4");
-    let activation = SIGMOID;
-    let loss_function = &|x: f32| x * x;
 
-    let mut network: NeuralNetwork =
-        NeuralNetwork::new(vec![784, 28, 10], 0.03, activation, loss_function);
+    let mut network: NeuralNetwork = NeuralNetwork::new(vec![784, 28, 10]);
     network.load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");

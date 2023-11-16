@@ -1,14 +1,11 @@
-use neural_network::activations::SIGMOID;
 use neural_network::NeuralNetwork;
 
 use linear_algebra::Matrix;
 
 fn main() {
     println!("Hello, world!");
-    let activation = SIGMOID;
-    let loss_function = &|x: f32| x * x;
 
-    let mut network = NeuralNetwork::new(vec![2, 3, 1], 1.0, activation, loss_function);
+    let mut network = NeuralNetwork::new(vec![2, 3, 1]);
     network.load("./saved-network.json".to_string());
 
     let inputs: Vec<Vec<f32>> = vec![

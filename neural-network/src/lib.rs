@@ -1,6 +1,5 @@
 pub mod activations;
 
-use activations::Activation;
 use linear_algebra::Matrix;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -82,11 +81,8 @@ impl Layer {
     }
 }
 
-pub struct NeuralNetwork<'a> {
+pub struct NeuralNetwork {
     layers: Vec<Layer>,
-    learning_rate: f32,
-    activation: Activation<'a>,
-    loss_function: &'a dyn Fn(f32) -> f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,25 +90,15 @@ struct SavedNeuralNetwork {
     layers: Vec<Layer>,
 }
 
-impl NeuralNetwork<'_> {
-    pub fn new<'a>(
-        neurons_per_layer: Vec<usize>,
-        learning_rate: f32,
-        activation: Activation<'a>,
-        loss_function: &'a dyn Fn(f32) -> f32,
-    ) -> NeuralNetwork<'a> {
+impl NeuralNetwork {
+    pub fn new(neurons_per_layer: Vec<usize>) -> NeuralNetwork {
         let mut layers: Vec<Layer> = vec![];
 
         for i in 1..neurons_per_layer.len() {
             layers.push(Layer::new(neurons_per_layer[i - 1], neurons_per_layer[i]));
         }
 
-        return NeuralNetwork {
-            layers,
-            learning_rate,
-            activation,
-            loss_function,
-        };
+        return NeuralNetwork { layers };
     }
 
     pub fn train(&mut self, inputs: Vec<Vec<f32>>, target: Vec<Vec<f32>>, epochs: usize) {
@@ -150,7 +136,10 @@ impl NeuralNetwork<'_> {
                 );
             }
         }
-        println!("Time elapsed in training -> {:?} miliseconds", start_time.elapsed().as_millis());
+        println!(
+            "Time elapsed in training -> {:?} miliseconds",
+            start_time.elapsed().as_millis()
+        );
     }
 
     pub fn try_to_predict(&mut self, inputs: Vec<f32>) -> Vec<f32> {
