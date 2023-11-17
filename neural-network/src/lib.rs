@@ -207,4 +207,24 @@ impl NeuralNetwork {
 
         self.layers = layers;
     }
+
+    pub fn load_from_json(&mut self, json: String) {
+      let saved_data: SavedNeuralNetwork =
+          from_str(&json).expect("Unable to serialize saved data");
+
+      let mut layers: Vec<Layer> = vec![];
+
+      for i in 0..self.layers.len() {
+          layers.push(Layer {
+              inputs: self.layers[i].inputs,
+              outputs: self.layers[i].outputs,
+              weights: Matrix::from(saved_data.layers[i].weights.clone()),
+              biases: Matrix::from(saved_data.layers[i].biases.clone()),
+              output: saved_data.layers[i].output.clone(),
+              input: saved_data.layers[i].input.clone(),
+          })
+      }
+
+      self.layers = layers;
+  }
 }
