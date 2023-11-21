@@ -9,8 +9,12 @@ fn main() {
     println!("Hello, world!");
     env::set_var("RAYON_NUM_THREADS", "4");
 
-    let mut network: NeuralNetwork = NeuralNetwork::new(vec![784, 28, 10]);
-    network.load("./saved-network-mnist.json".to_string());
+    // let learning_rate: f32 = 0.3;
+    // let mut network: NeuralNetwork = NeuralNetwork::new(vec![
+    //     Layer::new(784, 28, String::from("SIGMOID"), learning_rate),
+    //     Layer::new(28, 10, String::from("SIGMOID"), learning_rate),
+    // ]);
+    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 

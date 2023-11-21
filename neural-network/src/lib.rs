@@ -1,5 +1,6 @@
 pub mod activations;
 
+use activations::{get_activation_derivative_map, get_activation_map};
 use linear_algebra::Matrix;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -17,10 +18,17 @@ pub struct Layer {
     biases: Matrix,
     output: Matrix,
     input: Matrix,
+    learning_rate: f32,
+    activation_function: String,
 }
 
 impl Layer {
-    pub fn new(inputs: usize, outputs: usize) -> Layer {
+    pub fn new(
+        inputs: usize,
+        outputs: usize,
+        activation_function: String,
+        learning_rate: f32,
+    ) -> Layer {
         let weights: Matrix = Matrix::random(outputs, inputs);
         let biases: Matrix = Matrix::random(outputs, 1);
 
@@ -31,19 +39,22 @@ impl Layer {
             biases,
             output: Matrix::zeros(inputs, 1),
             input: Matrix::zeros(outputs, 1),
+            learning_rate,
+            activation_function,
         };
     }
 
     pub fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
         // Convert the input vector to a matrix
         self.input = Matrix::from(inputs);
-
+        let map = get_activation_map();
+        let act = String::from(self.activation_function.clone());
         // Calculate the weighted sum of the inputs
         let weighted_sums: Matrix = self
             .weights
             .multiply(&self.input)
             .add(&self.biases)
-            .apply_function(activations::SIGMOID.function);
+            .apply_function(map.get(&act).unwrap());
 
         self.output = weighted_sums.clone();
         // Return the output vector
@@ -51,9 +62,11 @@ impl Layer {
     }
 
     pub fn back_propagate(&mut self, loss: &Matrix) -> Matrix {
+        let map = get_activation_derivative_map();
+        let act = String::from(self.activation_function.clone());
         // Calculate the error for this layer
         let error: Matrix =
-            loss.hadamard_product(&self.output.apply_function(activations::SIGMOID.derivative));
+            loss.hadamard_product(&self.output.apply_function(map.get(&act).unwrap()));
 
         // Calculate the gradient of the loss with respect to the weights
         let weight_gradients: Matrix = error.multiply(&self.input.transpose());
@@ -62,8 +75,8 @@ impl Layer {
         let bias_gradients: Matrix = error.clone();
 
         // Update the weights and biases
-        self.add_to_weights(&weight_gradients.apply_function(&|x| x * 0.3));
-        self.add_to_biases(&bias_gradients.apply_function(&|x| x * 0.3));
+        self.add_to_weights(&weight_gradients.apply_function(&|x| x * self.learning_rate));
+        self.add_to_biases(&bias_gradients.apply_function(&|x| x * self.learning_rate));
 
         // Calculate the error for the previous layer
         let previous_layer_error: Matrix = self.weights.transpose().multiply(&error);
@@ -91,13 +104,7 @@ struct SavedNeuralNetwork {
 }
 
 impl NeuralNetwork {
-    pub fn new(neurons_per_layer: Vec<usize>) -> NeuralNetwork {
-        let mut layers: Vec<Layer> = vec![];
-
-        for i in 1..neurons_per_layer.len() {
-            layers.push(Layer::new(neurons_per_layer[i - 1], neurons_per_layer[i]));
-        }
-
+    pub fn new(layers: Vec<Layer>) -> NeuralNetwork {
         return NeuralNetwork { layers };
     }
 
@@ -182,7 +189,7 @@ impl NeuralNetwork {
         .expect("Unable to write to file");
     }
 
-    pub fn load(&mut self, file: String) {
+    pub fn load(file: String) -> NeuralNetwork {
         let mut file = File::open(file).expect("Unable to load saved file");
         let mut buffer = String::new();
 
@@ -194,37 +201,41 @@ impl NeuralNetwork {
 
         let mut layers: Vec<Layer> = vec![];
 
-        for i in 0..self.layers.len() {
+        for i in 0..saved_data.layers.len() {
             layers.push(Layer {
-                inputs: self.layers[i].inputs,
-                outputs: self.layers[i].outputs,
+                inputs: saved_data.layers[i].inputs,
+                outputs: saved_data.layers[i].outputs,
                 weights: Matrix::from(saved_data.layers[i].weights.clone()),
                 biases: Matrix::from(saved_data.layers[i].biases.clone()),
                 output: saved_data.layers[i].output.clone(),
                 input: saved_data.layers[i].input.clone(),
+                learning_rate: saved_data.layers[i].learning_rate,
+                activation_function: saved_data.layers[i].activation_function.clone(),
             })
         }
 
-        self.layers = layers;
+        return NeuralNetwork { layers };
     }
 
-    pub fn load_from_json(&mut self, json: String) {
-      let saved_data: SavedNeuralNetwork =
-          from_str(&json).expect("Unable to serialize saved data");
+    pub fn load_from_json(json: String) -> NeuralNetwork {
+        let saved_data: SavedNeuralNetwork =
+            from_str(&json).expect("Unable to serialize saved data");
 
-      let mut layers: Vec<Layer> = vec![];
+        let mut layers: Vec<Layer> = vec![];
 
-      for i in 0..self.layers.len() {
-          layers.push(Layer {
-              inputs: self.layers[i].inputs,
-              outputs: self.layers[i].outputs,
-              weights: Matrix::from(saved_data.layers[i].weights.clone()),
-              biases: Matrix::from(saved_data.layers[i].biases.clone()),
-              output: saved_data.layers[i].output.clone(),
-              input: saved_data.layers[i].input.clone(),
-          })
-      }
+        for i in 0..saved_data.layers.len() {
+            layers.push(Layer {
+                inputs: saved_data.layers[i].inputs,
+                outputs: saved_data.layers[i].outputs,
+                weights: Matrix::from(saved_data.layers[i].weights.clone()),
+                biases: Matrix::from(saved_data.layers[i].biases.clone()),
+                output: saved_data.layers[i].output.clone(),
+                input: saved_data.layers[i].input.clone(),
+                learning_rate: saved_data.layers[i].learning_rate,
+                activation_function: saved_data.layers[i].activation_function.clone(),
+            })
+        }
 
-      self.layers = layers;
-  }
+        return NeuralNetwork { layers };
+    }
 }

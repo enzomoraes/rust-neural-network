@@ -5,8 +5,12 @@ use linear_algebra::Matrix;
 fn main() {
     println!("Hello, world!");
 
-    let mut network = NeuralNetwork::new(vec![2, 3, 1]);
-    network.load("./saved-network.json".to_string());
+    // let learning_rate: f32 = 0.3;
+    // let mut network: NeuralNetwork = NeuralNetwork::new(vec![
+    //     Layer::new(2, 3, String::from("SIGMOID"), learning_rate),
+    //     Layer::new(3, 1, String::from("SIGMOID"), learning_rate),
+    // ]);
+    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network.json".to_string());
 
     let inputs: Vec<Vec<f32>> = vec![
         vec![0.0, 0.0],

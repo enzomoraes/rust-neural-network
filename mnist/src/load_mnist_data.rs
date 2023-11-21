@@ -26,7 +26,7 @@ impl fmt::Display for Image {
                 result.push('\n');
             }
             result.push(match (self.pixels[i as usize] * 255.0) as u8 {
-                0 => ' ', // Background (white)
+                0 => ' ',   // Background (white)
                 255 => '█', // Foreground (black)
                 _ => '#',   // Other values
             });
@@ -103,10 +103,8 @@ pub fn load_data(directory: &str) -> MNIST {
 
     let test_labels: std::result::Result<Vec<Label>, std::io::Error> =
         read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
-    // let test_labels2: std::result::Result<Vec<Label>, std::io::Error> = read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
 
     // println!("{}", test_images2.unwrap()[1000]);
-    // println!("{}", test_labels2.unwrap()[1000]);
 
     return MNIST {
         train_images: train_images
