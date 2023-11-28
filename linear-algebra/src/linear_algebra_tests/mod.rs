@@ -232,6 +232,26 @@ mod linear_algebra_tests {
     }
 
     #[test]
+    fn identity() {
+        let matrix_a: Matrix = Matrix::identity(3);
+        assert_eq!(matrix_a.rows, 3);
+        assert_eq!(matrix_a.cols, 3);
+
+        assert_eq!(matrix_a.data[0], 1.0);
+        assert_eq!(matrix_a.data[1], 0.0);
+        assert_eq!(matrix_a.data[2], 0.0);
+
+        assert_eq!(matrix_a.data[3], 0.0);
+        assert_eq!(matrix_a.data[4], 1.0);
+        assert_eq!(matrix_a.data[5], 0.0);
+
+        assert_eq!(matrix_a.data[6], 0.0);
+        assert_eq!(matrix_a.data[7], 0.0);
+        assert_eq!(matrix_a.data[8], 1.0);
+    }
+
+
+    #[test]
     fn apply_function_to_matrix() {
         let a = vec![1.0, 10.0, 4.0, 9.0];
         let matrix_a: Matrix = Matrix::new(2, 2, a);

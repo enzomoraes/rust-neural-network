@@ -15,32 +15,6 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    pub fn hadamard_product(&self, other: &Matrix) -> Matrix {
-        if self.rows != other.rows || self.cols != other.cols {
-            panic!(
-                "Cannot apply hadamard product to matrices. {}x{} & {}x{}",
-                self.rows, self.cols, other.rows, other.cols
-            )
-        }
-
-        let mut result_data = vec![0.0; self.rows * self.cols];
-
-        result_data
-            .par_chunks_mut(self.cols)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..self.cols {
-                    result_row[j] = self.data[i * self.cols + j] * other.data[i * self.cols + j];
-                }
-            });
-
-        Matrix {
-            rows: self.rows,
-            cols: self.cols,
-            data: result_data,
-        }
-    }
-
     pub fn random(rows: usize, cols: usize) -> Matrix {
         let mut buffer = Vec::<f32>::with_capacity(rows * cols);
 
@@ -150,6 +124,32 @@ impl Matrix {
         }
     }
 
+    pub fn hadamard_product(&self, other: &Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!(
+                "Cannot apply hadamard product to matrices. {}x{} & {}x{}",
+                self.rows, self.cols, other.rows, other.cols
+            )
+        }
+
+        let mut result_data = vec![0.0; self.rows * self.cols];
+
+        result_data
+            .par_chunks_mut(self.cols)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..self.cols {
+                    result_row[j] = self.data[i * self.cols + j] * other.data[i * self.cols + j];
+                }
+            });
+
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data: result_data,
+        }
+    }
+
     pub fn transpose(&self) -> Matrix {
         let mut buffer = vec![0.0; self.cols * self.rows];
 
@@ -163,6 +163,27 @@ impl Matrix {
             rows: self.cols,
             cols: self.rows,
             data: buffer,
+        }
+    }
+
+    pub fn identity(size: usize) -> Matrix{
+        let mut result_data = vec![0.0; size * size];
+
+        result_data
+            .par_chunks_mut(size)
+            .enumerate()
+            .for_each(|(i, result_row)| {
+                for j in 0..size {
+                    if j.eq(&i) {
+                        result_row[j] = 1.0;
+                    }
+                }
+            });
+
+        Matrix {
+            rows: size,
+            cols: size,
+            data: result_data,
         }
     }
 

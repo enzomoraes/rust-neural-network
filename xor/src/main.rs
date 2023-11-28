@@ -1,16 +1,16 @@
-use neural_network::NeuralNetwork;
+use neural_network::{DenseLayer, NeuralNetwork};
 
 use linear_algebra::Matrix;
 
 fn main() {
     println!("Hello, world!");
 
-    // let learning_rate: f32 = 0.3;
-    // let mut network: NeuralNetwork = NeuralNetwork::new(vec![
-    //     Layer::new(2, 3, String::from("SIGMOID"), learning_rate),
-    //     Layer::new(3, 1, String::from("SIGMOID"), learning_rate),
-    // ]);
-    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network.json".to_string());
+    let learning_rate: f32 = 0.3;
+    let mut network: NeuralNetwork = NeuralNetwork::new(vec![
+        Box::new(DenseLayer::new(2, 3, String::from("TANH"), learning_rate)),
+        Box::new(DenseLayer::new(3, 1, String::from("TANH"), learning_rate)),
+    ]);
+    // let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network.json".to_string());
 
     let inputs: Vec<Vec<f32>> = vec![
         vec![0.0, 0.0],

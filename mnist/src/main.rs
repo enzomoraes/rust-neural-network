@@ -11,10 +11,12 @@ fn main() {
 
     // let learning_rate: f32 = 0.3;
     // let mut network: NeuralNetwork = NeuralNetwork::new(vec![
-    //     Layer::new(784, 28, String::from("SIGMOID"), learning_rate),
-    //     Layer::new(28, 10, String::from("SIGMOID"), learning_rate),
+    //     Box::new(DenseLayer::new(784, 28, String::from("SIGMOID"), learning_rate)),
+    //     Box::new(DenseLayer::new(28, 10, String::from("SIGMOID"), learning_rate)),
+    //     Box::new(SoftMaxLayer::new(10, 10)),
     // ]);
-    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network-mnist.json".to_string());
+    let mut network: NeuralNetwork =
+        NeuralNetwork::load("./saved-network-mnist-softmax.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
@@ -24,7 +26,7 @@ fn main() {
     let target_test: Vec<Vec<f32>> = data.test_labels;
 
     network.train(inputs_train, target_train, 10);
-    network.save("./saved-network-mnist.json".to_string());
+    network.save("./saved-network-mnist-softmax.json".to_string());
 
     let mut testing_precision: f32 = 0.0;
 
