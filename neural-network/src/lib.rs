@@ -1,7 +1,9 @@
 pub mod activations;
+pub mod loss_functions;
 
 use activations::{get_activation_derivative_map, get_activation_map};
 use linear_algebra::Matrix;
+use loss_functions::LossFunction;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 use std::{
@@ -150,15 +152,9 @@ impl Layer for SoftMaxLayer {
     }
 
     fn back_propagate(&mut self, loss: &Matrix) -> Matrix {
-        let mut tile_vector: Vec<f32> = vec![];
-        for _ in 0..self.output.data.len() {
-            tile_vector.append(self.output.data.clone().as_mut());
-        }
-        let temp = Matrix::new(self.output.rows, self.output.cols * self.output.rows, tile_vector);
-        let identity = Matrix::identity(self.output.cols * self.output.rows);
-        return temp
-            .hadamard_product(&identity.subtract(&temp.transpose()))
-            .multiply(loss);
+        let target: Matrix = loss.apply_function(&|x| if x.eq(&0f32) { 0f32 } else { 1f32 });
+        let gradient = self.output.subtract(&target);
+        return gradient;
     }
 
     fn get_type(&self) -> String {
@@ -197,6 +193,7 @@ impl SoftMaxLayer {
 #[derive(Serialize, Deserialize)]
 pub struct SavedNeuralNetwork {
     layers: Vec<SavedLayers>,
+    loss_function: LossFunction,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -212,23 +209,28 @@ pub struct SavedLayers {
 
 pub struct NeuralNetwork {
     layers: Vec<Box<dyn Layer>>,
+    loss_function: LossFunction,
 }
 
 impl NeuralNetwork {
-    pub fn new(layers: Vec<Box<dyn Layer>>) -> NeuralNetwork {
-        return NeuralNetwork { layers };
+    pub fn new(layers: Vec<Box<dyn Layer>>, loss_function: LossFunction) -> NeuralNetwork {
+        return NeuralNetwork {
+            layers,
+            loss_function,
+        };
     }
 
     pub fn train(&mut self, inputs: Vec<Vec<f32>>, target: Vec<Vec<f32>>, epochs: usize) {
         let start_time = Instant::now();
 
         for i in 1..=epochs {
-            let mut training_precision: f32 = 0.0;
+            let mut training_accuracy: f32 = 0.0;
             for j in 0..inputs.len() {
                 let mut predictions: Vec<f32> = inputs[j].clone();
                 for layer_index in 0..self.layers.len() {
                     predictions = self.layers[layer_index].feed_forward(predictions);
                 }
+
                 let mut loss: Matrix = self.loss_function(
                     &Matrix::from(target[j].clone()),
                     &Matrix::from(predictions.clone()),
@@ -242,15 +244,15 @@ impl NeuralNetwork {
                 if NeuralNetwork::get_max_value_index(predictions)
                     .eq(&NeuralNetwork::get_max_value_index(target[j].clone()))
                 {
-                    training_precision += 1.0;
+                    training_accuracy += 1.0;
                 }
             }
             if i % (1) == 0 {
                 println!(
-                    "Epoch {} of {}. Precision: {}% - elapsed {} miliseconds",
+                    "Epoch {} of {}. Accuracy: {}% - elapsed {} miliseconds",
                     i,
                     epochs,
-                    (training_precision / inputs.len() as f32) * 100.0,
+                    (training_accuracy / inputs.len() as f32) * 100.0,
                     start_time.elapsed().as_millis()
                 );
             }
@@ -270,9 +272,16 @@ impl NeuralNetwork {
     }
 
     fn loss_function(&self, target: &Matrix, predictions: &Matrix) -> Matrix {
-        return target
-            .apply_function(&|x| x * x)
-            .subtract(&predictions.apply_function(&|x| x * x));
+        match self.loss_function {
+            LossFunction::CategoricalCrossEntropy => {
+                return target.hadamard_product(&predictions.apply_function(&|x| -(x.ln())))
+            }
+            LossFunction::SquaredError => {
+                return target
+                    .apply_function(&|x| x * x)
+                    .subtract(&predictions.apply_function(&|x| x * x));
+            }
+        }
     }
 
     pub fn get_max_value_index(vector: Vec<f32>) -> usize {
@@ -304,7 +313,8 @@ impl NeuralNetwork {
         }
         file.write_all(
             json!({
-              "layers": layers
+              "layers": layers,
+              "loss_function": self.loss_function
             })
             .to_string()
             .as_bytes(),
@@ -344,14 +354,18 @@ impl NeuralNetwork {
                 }
             }
         }
-        return NeuralNetwork { layers };
+        return NeuralNetwork {
+            layers,
+            loss_function: saved_data.loss_function,
+        };
     }
 
     pub fn load_from_json(json: String) -> NeuralNetwork {
-        let saved_data: Vec<SavedLayers> = from_str(&json).expect("Unable to serialize saved data");
+        let saved_data: SavedNeuralNetwork =
+            from_str(&json).expect("Unable to serialize saved data");
         let mut layers: Vec<Box<dyn Layer>> = vec![];
 
-        for layer in saved_data.iter() {
+        for layer in saved_data.layers.iter() {
             match layer.layer_type.clone().as_str() {
                 "dense" => layers.push(Box::new(DenseLayer {
                     inputs: layer.inputs,
@@ -373,6 +387,9 @@ impl NeuralNetwork {
                 }
             }
         }
-        return NeuralNetwork { layers };
+        return NeuralNetwork {
+            layers,
+            loss_function: saved_data.loss_function,
+        };
     }
 }

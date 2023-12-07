@@ -1,15 +1,18 @@
-use neural_network::{DenseLayer, NeuralNetwork};
-
 use linear_algebra::Matrix;
+use neural_network::loss_functions::LossFunction;
+use neural_network::{DenseLayer, NeuralNetwork};
 
 fn main() {
     println!("Hello, world!");
 
     let learning_rate: f32 = 0.3;
-    let mut network: NeuralNetwork = NeuralNetwork::new(vec![
-        Box::new(DenseLayer::new(2, 3, String::from("TANH"), learning_rate)),
-        Box::new(DenseLayer::new(3, 1, String::from("TANH"), learning_rate)),
-    ]);
+    let mut network: NeuralNetwork = NeuralNetwork::new(
+        vec![
+            Box::new(DenseLayer::new(2, 3, String::from("TANH"), learning_rate)),
+            Box::new(DenseLayer::new(3, 1, String::from("TANH"), learning_rate)),
+        ],
+        LossFunction::SquaredError,
+    );
     // let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network.json".to_string());
 
     let inputs: Vec<Vec<f32>> = vec![
