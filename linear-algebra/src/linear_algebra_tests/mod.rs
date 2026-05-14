@@ -30,7 +30,7 @@ mod linear_algebra_tests {
 
     #[test]
     fn random_matrix() {
-        let matrix = Matrix::random(10, 10);
+        let matrix = Matrix::random(10, 10, &"RELU");
 
         for i in 0..matrix.rows {
             assert_ne!(matrix.data[i], 0.0);
@@ -255,7 +255,7 @@ mod linear_algebra_tests {
     fn apply_function_to_matrix() {
         let a = vec![1.0, 10.0, 4.0, 9.0];
         let matrix_a: Matrix = Matrix::new(2, 2, a);
-        let multiplied_by_2_matrix: Matrix = matrix_a.apply_function(&|x| (x * 2.0));
+        let multiplied_by_2_matrix: Matrix = matrix_a.apply_function(&|x| x * 2.0);
 
         assert_eq!(multiplied_by_2_matrix.rows, 2);
         assert_eq!(multiplied_by_2_matrix.cols, 2);

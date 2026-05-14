@@ -1,11 +1,15 @@
-extern crate rayon;
-
 use rand::Rng;
 mod linear_algebra_tests;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fmt;
 
-use rayon::prelude::*;
+fn get_block_size() -> usize {
+    env::var("BLOCK_SIZE")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(32)
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Matrix {
@@ -15,12 +19,28 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    pub fn random(rows: usize, cols: usize) -> Matrix {
+    pub fn random(rows: usize, cols: usize, activation: &str) -> Matrix {
         let mut buffer = Vec::<f32>::with_capacity(rows * cols);
 
-        for _ in 0..rows * cols {
-            let num = rand::thread_rng().gen::<f32>() * 2.0 - 1.0;
+        // Define o limite baseado na função de ativação matemática ideal
+        let limit = match activation {
+            "RELU" => {
+                // He Initialization (Ideal para ReLU)
+                (6.0 / cols as f32).sqrt()
+            }
+            "SIGMOID" | "TANH" => {
+                // Xavier/Glorot Initialization (Ideal para Sigmoid e Tanh)
+                (6.0 / (cols + rows) as f32).sqrt()
+            }
+            _ => {
+                // Fallback padrão se não houver regra específica
+                1.0
+            }
+        };
 
+        for _ in 0..rows * cols {
+            // Gera o número dentro do limite calculado perfeitamente
+            let num = (rand::thread_rng().gen::<f32>() * 2.0 - 1.0) * limit;
             buffer.push(num);
         }
 
@@ -52,16 +72,25 @@ impl Matrix {
             )
         }
 
-        let mut result_data = vec![0.0; self.rows * self.cols];
+        let block_size = get_block_size();
+        let rows = self.rows;
+        let cols = self.cols;
 
-        result_data
-            .par_chunks_mut(self.cols)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..self.cols {
-                    result_row[j] = self.data[i * self.cols + j] + other.data[i * self.cols + j];
+        let mut result_data = vec![0.0; rows * cols];
+
+        for ii in (0..rows).step_by(block_size) {
+            for jj in (0..cols).step_by(block_size) {
+                let i_max = (ii + block_size).min(rows);
+                let j_max = (jj + block_size).min(cols);
+
+                for i in ii..i_max {
+                    for j in jj..j_max {
+                        let idx = i * cols + j;
+                        result_data[idx] = self.data[idx] + other.data[idx];
+                    }
                 }
-            });
+            }
+        }
 
         Matrix {
             rows: self.rows,
@@ -76,17 +105,25 @@ impl Matrix {
             "Cannot subtract matrices with different dimensions"
         );
 
-        let mut result_data = vec![0.0; self.rows * self.cols];
+        let block_size = get_block_size();
+        let rows = self.rows;
+        let cols = self.cols;
 
-        result_data
-            .par_chunks_mut(self.cols)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..self.cols {
-                    result_row[j] = self.data[i * self.cols + j] - other.data[i * self.cols + j];
+        let mut result_data = vec![0.0; rows * cols];
+
+        for ii in (0..rows).step_by(block_size) {
+            for jj in (0..cols).step_by(block_size) {
+                let i_max = (ii + block_size).min(rows);
+                let j_max = (jj + block_size).min(cols);
+
+                for i in ii..i_max {
+                    for j in jj..j_max {
+                        let idx = i * cols + j;
+                        result_data[idx] = self.data[idx] - other.data[idx];
+                    }
                 }
-            });
-
+            }
+        }
         Matrix {
             rows: self.rows,
             cols: self.cols,
@@ -102,20 +139,34 @@ impl Matrix {
             )
         }
 
+        let block_size = get_block_size();
         let mut result_data = vec![0.0; self.rows * other.cols];
+        let n = self.rows;
+        let m = self.cols;
+        let p = other.cols;
 
-        result_data
-            .par_chunks_mut(other.cols)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..other.cols {
-                    let mut sum = 0.0;
-                    for k in 0..self.cols {
-                        sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
+        for ii in (0..n).step_by(block_size) {
+            for jj in (0..p).step_by(block_size) {
+                for kk in (0..m).step_by(block_size) {
+                    // para cada bloco
+                    let i_max = (ii + block_size).min(n);
+                    let j_max = (jj + block_size).min(p);
+                    let k_max = (kk + block_size).min(m);
+
+                    for i in ii..i_max {
+                        for j in jj..j_max {
+                            let mut sum = result_data[i * p + j];
+
+                            for k in kk..k_max {
+                                sum += self.data[i * m + k] * other.data[k * p + j];
+                            }
+
+                            result_data[i * p + j] = sum;
+                        }
                     }
-                    result_row[j] = sum;
                 }
-            });
+            }
+        }
 
         Matrix {
             rows: self.rows,
@@ -134,14 +185,12 @@ impl Matrix {
 
         let mut result_data = vec![0.0; self.rows * self.cols];
 
-        result_data
-            .par_chunks_mut(self.cols)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..self.cols {
-                    result_row[j] = self.data[i * self.cols + j] * other.data[i * self.cols + j];
-                }
-            });
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                result_data[i * self.cols + j] =
+                    self.data[i * self.cols + j] * other.data[i * self.cols + j];
+            }
+        }
 
         Matrix {
             rows: self.rows,
@@ -166,19 +215,16 @@ impl Matrix {
         }
     }
 
-    pub fn identity(size: usize) -> Matrix{
+    pub fn identity(size: usize) -> Matrix {
         let mut result_data = vec![0.0; size * size];
 
-        result_data
-            .par_chunks_mut(size)
-            .enumerate()
-            .for_each(|(i, result_row)| {
-                for j in 0..size {
-                    if j.eq(&i) {
-                        result_row[j] = 1.0;
-                    }
+        for i in 0..size {
+            for j in 0..size {
+                if j.eq(&i) {
+                    result_data[i * size + j] = 1.0;
                 }
-            });
+            }
+        }
 
         Matrix {
             rows: size,

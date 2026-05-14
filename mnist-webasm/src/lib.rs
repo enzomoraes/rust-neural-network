@@ -1,4 +1,5 @@
 use neural_network::NeuralNetwork;
+use neural_network::savable_neural_network::SavableNeuralNetwork;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

@@ -3,21 +3,37 @@ mod load_mnist_data;
 use std::env;
 
 use load_mnist_data::load_data;
-use neural_network::{NeuralNetwork, DenseLayer, SoftMaxLayer};
+use neural_network::layer::DenseLayer;
 use neural_network::loss_functions::LossFunction;
+use neural_network::savable_neural_network::SavableNeuralNetwork;
+use neural_network::NeuralNetwork;
 
 fn main() {
-    println!("Hello, world!");
-    env::set_var("RAYON_NUM_THREADS", "4");
+    let block_size = 128;
+    env::set_var("BLOCK_SIZE", block_size.to_string());
 
-    let learning_rate: f32 = 0.3;
-    let mut network: NeuralNetwork = NeuralNetwork::new(vec![
-        Box::new(DenseLayer::new(784, 28, String::from("SIGMOID"), learning_rate)),
-        Box::new(DenseLayer::new(28, 10, String::from("SIGMOID"), learning_rate)),
-        Box::new(SoftMaxLayer::new(10, 10)),
-    ], LossFunction::CategoricalCrossEntropy);
-    // let mut network: NeuralNetwork =
-    //     NeuralNetwork::load("./saved-network-mnist.json".to_string());
+    let learning_rate: f32 = 0.01;
+    let layers_array = [
+        DenseLayer::new(784, 128, String::from("RELU"), learning_rate),
+        DenseLayer::new(128, 32, String::from("RELU"), learning_rate),
+        DenseLayer::new(32, 10, String::from("SIGMOID"), learning_rate),
+    ];
+    println!(
+        "Started - learning rate {learning_rate} - using block_size for tiling of {block_size}",
+        learning_rate = learning_rate,
+        block_size = block_size
+    );
+    println!("Network Architecture:");
+    for layer in layers_array.iter() {
+        println!("  {}", layer);
+    }
+
+    let layers: Vec<Box<dyn neural_network::layer::Layer>> = layers_array
+        .into_iter()
+        .map(|l| Box::new(l) as Box<dyn neural_network::layer::Layer>)
+        .collect();
+
+    let mut network: NeuralNetwork = NeuralNetwork::new(layers, LossFunction::SquaredError);
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
