@@ -7,25 +7,6 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in library 'linear-algebra'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--lib",
-          "--package=linear-algebra"
-        ],
-        "filter": {
-          "name": "linear-algebra",
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
       "name": "Debug unit tests in library 'neural-network'",
       "cargo": {
         "args": [
