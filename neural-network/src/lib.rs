@@ -4,8 +4,8 @@ pub mod loss_functions;
 pub mod savable_neural_network;
 
 use crate::layer::Layer;
-use linear_algebra::Matrix;
 use loss_functions::LossFunction;
+use ndarray::Array2;
 use std::time::Instant;
 
 pub struct NeuralNetwork {
@@ -31,9 +31,9 @@ impl NeuralNetwork {
                     predictions = self.layers[layer_index].feed_forward(predictions);
                 }
 
-                let mut gradient: Matrix = self.loss_function.compute_gradient(
-                    &Matrix::from(target[j].clone()),
-                    &Matrix::from(predictions.clone()),
+                let mut gradient = self.loss_function.compute_gradient(
+                    &Array2::from_shape_vec((target[j].len(), 1), target[j].clone()).unwrap(),
+                    &Array2::from_shape_vec((predictions.len(), 1), predictions.clone()).unwrap(),
                 );
 
                 // Backpropagate using the gradient
@@ -55,12 +55,12 @@ impl NeuralNetwork {
 
                     // A. Calculate Loss (Mean Squared Error)
                     let loss_matrix = self.loss_function.compute_loss(
-                        &Matrix::from(target[j].clone()),
-                        &Matrix::from(predictions.clone()),
+                        &Array2::from_shape_vec((target[j].len(), 1), target[j].clone()).unwrap(),
+                        &Array2::from_shape_vec((predictions.len(), 1), predictions.clone()).unwrap(),
                     );
 
                     // Sum the loss for this specific sample
-                    let sample_loss: f32 = loss_matrix.data.iter().sum();
+                    let sample_loss: f32 = loss_matrix.iter().sum();
                     epoch_loss += sample_loss;
 
                     // B. Calculate Accuracy

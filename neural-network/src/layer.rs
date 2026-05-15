@@ -1,16 +1,20 @@
 use core::fmt;
 
-use crate::{activations::{get_activation_derivative_map, get_activation_map}, savable_neural_network::SavedLayers};
-use linear_algebra::Matrix;
+use crate::{
+    activations::{get_activation_derivative_a_map, get_activation_map},
+    savable_neural_network::SavedLayers,
+};
+use ndarray::Array2;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 pub trait Layer {
     fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32>;
-    fn back_propagate(&mut self, gradient_from_next_layer: &Matrix) -> Matrix;
+    fn back_propagate(&mut self, gradient_from_next_layer: &Array2<f32>) -> Array2<f32>;
 
     fn get_type(&self) -> String;
-    fn get_biases(&self) -> Matrix;
-    fn get_weights(&self) -> Matrix;
+    fn get_biases(&self) -> Array2<f32>;
+    fn get_weights(&self) -> Array2<f32>;
     fn get_learning_rate(&self) -> f32;
     fn get_activation_function(&self) -> String;
     fn get_inputs(&self) -> usize;
@@ -21,79 +25,123 @@ pub trait Layer {
 pub struct DenseLayer {
     inputs: usize,
     outputs: usize,
-    weights: Matrix,
-    biases: Matrix,
-    output: Matrix,
-    input: Matrix,
+    weights: Array2<f32>,
+    biases: Array2<f32>,
+    output: Array2<f32>,
+    input: Array2<f32>,
     learning_rate: f32,
     activation_function: String,
 }
 
 impl Layer for DenseLayer {
+    /// Executes the Forward Pass through the Dense Layer.
+    ///
+    /// The forward pass computes the predictions of this layer given an input vector.
+    /// It applies a linear transformation followed by a non-linear activation function.
+    ///
+    /// # Mathematical Theory
+    /// 1. **Linear Transformation ($Z$):** The layer calculates the dot product of its Weights ($W$)
+    ///    and the Input vector ($X$), and adds the Biases ($B$).
+    ///    $$Z = (W \cdot X) + B$$
+    /// 2. **Non-linear Activation ($A$):** The raw weighted sums ($Z$) are passed through the
+    ///    configured activation function ($f$) to introduce non-linearity.
+    ///    $$A = f(Z)$$
+    ///
+    /// The resulting activated matrix ($A$) is saved as `self.output` to be reused during
+    /// backpropagation, optimizing memory and compute time.
     fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
-        // Convert the input vector to a matrix
-        self.input = Matrix::from(inputs);
+        self.input = Array2::from_shape_vec((inputs.len(), 1), inputs).unwrap();
         let map = get_activation_map();
         let activation_function = map
             .get(&String::from(self.activation_function.clone()))
             .unwrap();
-        // Calculate the weighted sum of the inputs
-        let weighted_sums: Matrix = self
-            .weights
-            .multiply(&self.input)
-            .add(&self.biases)
-            .apply_function(&activation_function);
+
+        // Z = W * X + B
+        let weighted_sums = self.weights.dot(&self.input) + &self.biases;
+
+        // A = f(Z)
+        let weighted_sums = weighted_sums.mapv(activation_function);
 
         self.output = weighted_sums.clone();
-        // Return the output vector
-        return weighted_sums.data;
+        weighted_sums.iter().cloned().collect()
     }
-    fn back_propagate(&mut self, gradient_from_next_layer: &Matrix) -> Matrix {
-        let map = get_activation_derivative_map();
+
+    /// Executes the Backward Pass (Backpropagation) through the Dense Layer.
+    ///
+    /// This method applies the Chain Rule of Calculus to calculate how much the layer's
+    /// weights and biases contributed to the final network error, updates them, and passes
+    /// the remaining error backward to the previous layer.
+    ///
+    /// # Mathematical Theory
+    /// 1. **Calculate Local Error ($\delta$):** We multiply the incoming gradient by the derivative
+    ///    of the activation function. Because we cached $A$ (`self.output`), we evaluate $f'(A)$.
+    ///    The operation $\odot$ represents the Hadamard product (element-wise multiplication).
+    ///    $$Error = \text{gradient\_from\_next\_layer} \odot f'(A)$$
+    ///
+    /// 2. **Calculate Gradients:** We determine how to change weights ($dW$) and biases ($dB$)
+    ///    based on the local error and the original inputs ($X$).
+    ///    $$dW = Error \cdot X^T$$
+    ///    $$dB = Error$$
+    ///
+    /// 3. **Pass the Baton ($dX$):** We calculate the error gradient to be sent to the previous layer.
+    ///    This uses the layer's *current* weights before the update.
+    ///    $$dX = W^T \cdot Error$$
+    ///
+    /// 4. **Gradient Descent Update:** Finally, weights and biases are updated by stepping in the
+    ///    opposite direction of the gradient, scaled by the learning rate ($\alpha$).
+    ///    $$W_{new} = W - (\alpha \cdot dW)$$
+    ///    $$B_{new} = B - (\alpha \cdot dB)$$
+    fn back_propagate(&mut self, gradient_from_next_layer: &Array2<f32>) -> Array2<f32> {
+        let map = get_activation_derivative_a_map();
         let activation_derivative = map
             .get(&String::from(self.activation_function.clone()))
             .unwrap();
-        // Calculate the error for this layer
-        let error: Matrix = gradient_from_next_layer
-            .hadamard_product(&self.output.apply_function(activation_derivative));
 
-        // Calculate the gradient of the loss with respect to the weights
-        let weight_gradients: Matrix = error.multiply(&self.input.transpose());
+        // 1. Error = gradient ⊙ f'(A)
+        let error = gradient_from_next_layer * &self.output.mapv(activation_derivative);
 
-        // Calculate the gradient of the loss with respect to the biases
-        let bias_gradients: Matrix = error.clone();
+        // 2. dW = Error * X^T
+        let weight_gradients = error.dot(&self.input.t().to_owned());
 
-        // Calculate the error for the previous layer
-        let previous_layer_error: Matrix = self.weights.transpose().multiply(&error);
+        // dB = Error
+        let bias_gradients = error.clone();
 
-        // Update the weights and biases
-        self.add_to_weights(&weight_gradients.apply_function(&|x| x * -self.learning_rate));
-        self.add_to_biases(&bias_gradients.apply_function(&|x| x * -self.learning_rate));
+        // 3. dX = W^T * Error (Calculated before updating weights!)
+        let previous_layer_error = self.weights.t().to_owned().dot(&error);
 
-        // Return the error for the previous layer
-        return previous_layer_error;
+        // 4. Update Weights and Biases (W = W - α * dW)
+        self.add_to_weights(&weight_gradients.mapv(|x| x * -self.learning_rate));
+        self.add_to_biases(&bias_gradients.mapv(|x| x * -self.learning_rate));
+
+        previous_layer_error
     }
 
     fn get_type(&self) -> String {
-        return String::from("dense");
+        String::from("dense")
     }
-    fn get_biases(&self) -> Matrix {
-        return self.biases.clone();
+
+    fn get_biases(&self) -> Array2<f32> {
+        self.biases.clone()
     }
-    fn get_weights(&self) -> Matrix {
-        return self.weights.clone();
+
+    fn get_weights(&self) -> Array2<f32> {
+        self.weights.clone()
     }
+
     fn get_learning_rate(&self) -> f32 {
-        return self.learning_rate;
+        self.learning_rate
     }
+
     fn get_activation_function(&self) -> String {
-        return self.activation_function.clone();
+        self.activation_function.clone()
     }
+
     fn get_inputs(&self) -> usize {
-        return self.inputs;
+        self.inputs
     }
+
     fn get_outputs(&self) -> usize {
-        return self.outputs;
+        self.outputs
     }
 }
 
@@ -104,29 +152,39 @@ impl DenseLayer {
         activation_function: String,
         learning_rate: f32,
     ) -> DenseLayer {
-      
-        let weights: Matrix = Matrix::random(outputs, inputs, &activation_function);
-        let biases: Matrix = Matrix::zeros(outputs, 1);
+        let weights = random_matrix(outputs, inputs, &activation_function);
+        let biases = Array2::zeros((outputs, 1));
 
-        return DenseLayer {
+        DenseLayer {
             inputs,
             outputs,
             weights,
             biases,
-            output: Matrix::zeros(inputs, 1),
-            input: Matrix::zeros(outputs, 1),
+            output: Array2::zeros((inputs, 1)),
+            input: Array2::zeros((outputs, 1)),
             learning_rate,
             activation_function,
-        };
+        }
     }
 
-    pub fn add_to_weights(&mut self, matrix: &Matrix) {
-        self.weights = self.weights.add(&matrix);
+    pub fn add_to_weights(&mut self, matrix: &Array2<f32>) {
+        self.weights = &self.weights + matrix;
     }
 
-    pub fn add_to_biases(&mut self, matrix: &Matrix) {
-        self.biases = self.biases.add(&matrix);
+    pub fn add_to_biases(&mut self, matrix: &Array2<f32>) {
+        self.biases = &self.biases + matrix;
     }
+}
+
+fn random_matrix(rows: usize, cols: usize, activation: &str) -> Array2<f32> {
+    let mut rng = rand::thread_rng();
+    let limit = match activation {
+        "RELU" => (6.0 / (cols as f32)).sqrt(),
+        "TANH" | "SIGMOID" => (6.0 / (cols + rows) as f32).sqrt(),
+        _ => 1.0 / (cols as f32).sqrt(),
+    };
+
+    Array2::from_shape_fn((rows, cols), |_| rng.gen_range(-limit..limit))
 }
 
 impl From<&SavedLayers> for DenseLayer {
@@ -137,8 +195,8 @@ impl From<&SavedLayers> for DenseLayer {
             activation_function: layer.activation_function.clone(),
             biases: layer.biases.clone(),
             weights: layer.weights.clone(),
-            input: Matrix::new(1, 1, vec![1.0]),
-            output: Matrix::new(1, 1, vec![1.0]),
+            input: Array2::from_shape_vec((1, 1), vec![1.0]).unwrap(),
+            output: Array2::from_shape_vec((1, 1), vec![1.0]).unwrap(),
             learning_rate: layer.learning_rate,
         }
     }

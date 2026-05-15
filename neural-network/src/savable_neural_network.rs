@@ -1,6 +1,6 @@
 use std::{fs::File, io::{Read, Write}};
 
-use linear_algebra::Matrix;
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 
@@ -14,8 +14,8 @@ pub struct SavedNeuralNetwork {
 
 #[derive(Serialize, Deserialize)]
 pub struct SavedLayers {
-    pub weights: Matrix,
-    pub biases: Matrix,
+    pub weights: Array2<f32>,
+    pub biases: Array2<f32>,
     pub learning_rate: f32,
     pub activation_function: String,
     pub layer_type: String,

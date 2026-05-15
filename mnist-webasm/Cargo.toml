@@ -7,6 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-linear-algebra = {path = "../linear-algebra"}
 neural-network = {path = "../neural-network"}
 wasm-bindgen = "0.2.88"
