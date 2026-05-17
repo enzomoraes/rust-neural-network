@@ -27,8 +27,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -36,6 +38,15 @@ name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
+
+[[package]]
+name = "js-sys"
+version = "0.3.65"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54c0c35952f67de54bb584e9fd912b3023117cbafc0a77d8f3dee1fb5f572fe8"
+dependencies = [
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "libc"
@@ -68,8 +79,9 @@ dependencies = [
 
 [[package]]
 name = "mnist-webasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
+ "getrandom",
  "neural-network",
  "wasm-bindgen",
 ]
