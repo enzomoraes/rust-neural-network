@@ -40,3 +40,7 @@ We welcome contributions! Here's how to get started:
 - Maintain readable, well-documented code
 - Ensure changes align with the goal of demystifying machine learning concepts
 - Performance optimizations should not sacrifice code clarity
+
+### Roadmap
+- MNIST
+  - Add a 11º class as unknown.

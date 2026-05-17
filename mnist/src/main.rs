@@ -31,8 +31,8 @@ fn main() {
         .map(|l| Box::new(l) as Box<dyn neural_network::layer::Layer>)
         .collect();
 
-    // let mut network: NeuralNetwork = NeuralNetwork::new(layers, LossFunction::SquaredError);
-    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network-mnist.json".to_string());
+    let mut network: NeuralNetwork = NeuralNetwork::new(layers, LossFunction::SquaredError);
+    // let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
