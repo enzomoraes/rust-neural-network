@@ -1,7 +1,9 @@
+mod data_augmentation;
+mod image_export;
 mod load_mnist_data;
 
-use std::env;
-
+use data_augmentation::{augment_mnist, AugmentationConfig};
+use image_export::save_augmented_samples;
 use load_mnist_data::load_data;
 use neural_network::layer::DenseLayer;
 use neural_network::loss_functions::LossFunction;
@@ -9,9 +11,6 @@ use neural_network::savable_neural_network::SavableNeuralNetwork;
 use neural_network::NeuralNetwork;
 
 fn main() {
-    let block_size = 128;
-    env::set_var("BLOCK_SIZE", block_size.to_string());
-
     let learning_rate: f32 = 0.01;
     let layers_array = [
         DenseLayer::new(784, 128, String::from("RELU"), learning_rate),
@@ -19,9 +18,8 @@ fn main() {
         DenseLayer::new(32, 10, String::from("SIGMOID"), learning_rate),
     ];
     println!(
-        "Started - learning rate {learning_rate} - using block_size for tiling of {block_size}",
-        learning_rate = learning_rate,
-        block_size = block_size
+        "Started - learning rate {learning_rate}",
+        learning_rate = learning_rate
     );
     println!("Network Architecture:");
     for layer in layers_array.iter() {
@@ -33,14 +31,31 @@ fn main() {
         .map(|l| Box::new(l) as Box<dyn neural_network::layer::Layer>)
         .collect();
 
-    let mut network: NeuralNetwork = NeuralNetwork::new(layers, LossFunction::SquaredError);
+    // let mut network: NeuralNetwork = NeuralNetwork::new(layers, LossFunction::SquaredError);
+    let mut network: NeuralNetwork = NeuralNetwork::load("./saved-network-mnist.json".to_string());
 
     let data: load_mnist_data::MNIST = load_data("./mnist/data");
 
-    let inputs_train: Vec<Vec<f32>> = data.train_images;
-    let target_train: Vec<Vec<f32>> = data.train_labels;
     let inputs_test: Vec<Vec<f32>> = data.test_images;
     let target_test: Vec<Vec<f32>> = data.test_labels;
+
+    println!("\nAugmenting training data with Gaussian noise and rotations...");
+    let (inputs_train, target_train) = augment_mnist(
+        &data.train_images,
+        &data.train_labels,
+        &AugmentationConfig {
+            noise_stddev: 0.05,
+            rotation_angles: vec![10.0, -10.0],
+        },
+    );
+    println!("Original training images: {}", data.train_images.len());
+    println!("Augmented training images: {}", inputs_train.len());
+
+    println!("\nExporting sample augmented images for visualization...");
+    match save_augmented_samples(&inputs_train, 5, "./augmented_samples") {
+        Ok(()) => println!("✓ Images saved successfully"),
+        Err(e) => eprintln!("✗ Error saving images: {}", e),
+    }
 
     network.train(inputs_train, target_train, 10);
     network.save("./saved-network-mnist.json".to_string());

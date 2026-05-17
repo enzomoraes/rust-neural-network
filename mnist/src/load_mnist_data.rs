@@ -99,12 +99,9 @@ pub fn load_data(directory: &str) -> MNIST {
     let train_images = read_images(format!("{}/train-images.idx3-ubyte", directory).as_str());
     let train_labels = read_labels(format!("{}/train-labels.idx1-ubyte", directory).as_str());
     let test_images = read_images(format!("{}/t10k-images.idx3-ubyte", directory).as_str());
-    // let test_images2 = read_images(format!("{}/t10k-images.idx3-ubyte", directory).as_str());
 
     let test_labels: std::result::Result<Vec<Label>, std::io::Error> =
         read_labels(format!("{}/t10k-labels.idx1-ubyte", directory).as_str());
-
-    // println!("{}", test_images2.unwrap()[1000]);
 
     return MNIST {
         train_images: train_images

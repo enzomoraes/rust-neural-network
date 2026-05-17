@@ -1,1 +1,8 @@
 **/target
+augmented_samples/*
+!augmented_samples/sample_000_01_original.png
+!augmented_samples/sample_000_02_noisy.png
+!augmented_samples/sample_000_03_rotated_-10.png
+!augmented_samples/sample_000_04_rotated_-10_noisy.png
+!augmented_samples/sample_000_05_rotated_+10.png
+!augmented_samples/sample_000_06_rotated_+10_noisy.png

@@ -13,6 +13,14 @@ A simple demonstration application that trains a neural network to solve the XOR
 ### `mnist/` (Example Application)
 A digit classification application trained on the MNIST dataset. Demonstrates training on a realistic machine learning problem with larger datasets and model persistence. This example shows how to build and evaluate models on real-world data.
 
+#### Data Augmentation
+The MNIST training pipeline includes data augmentation to improve model generalization and robustness:
+- **Gaussian Noise**: Adds random Gaussian noise (σ = 0.05) to training images
+- **Image Rotation**: Rotates images by ±10 degrees to simulate different digit orientations
+- **Combined Augmentations**: Applies noise to rotated images for additional diversity
+
+Each training image is augmented to create 6 variants (original, noisy, rotated ±10°, and noisy rotations), effectively multiplying the training set size by 6x. Augmented samples are exported for visualization during training.
+
 ### `mnist-webasm/` (WebAssembly Application)
 A WebAssembly version of the MNIST model compiled for browser execution. Enables running trained neural networks directly in the browser without a server backend, showcasing the library's portability.
 
