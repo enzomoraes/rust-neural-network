@@ -4,7 +4,12 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 
-use crate::{NeuralNetwork, layer::{DenseLayer, Layer}, loss_functions::LossFunction};
+use crate::{
+    activations::ActivationFunction,
+    NeuralNetwork,
+    layer::{DenseLayer, Layer},
+    loss_functions::LossFunction,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct SavedNeuralNetwork {
@@ -17,7 +22,7 @@ pub struct SavedLayers {
     pub weights: Array2<f32>,
     pub biases: Array2<f32>,
     pub learning_rate: f32,
-    pub activation_function: String,
+    pub activation_function: ActivationFunction,
     pub layer_type: String,
     pub inputs: usize,
     pub outputs: usize,

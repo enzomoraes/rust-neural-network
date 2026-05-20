@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::{
-    activations::{get_activation_derivative_a_map, get_activation_map},
+    activations::ActivationFunction,
     savable_neural_network::SavedLayers,
 };
 use ndarray::Array2;
@@ -16,7 +16,7 @@ pub trait Layer {
     fn get_biases(&self) -> Array2<f32>;
     fn get_weights(&self) -> Array2<f32>;
     fn get_learning_rate(&self) -> f32;
-    fn get_activation_function(&self) -> String;
+    fn get_activation_function(&self) -> ActivationFunction;
     fn get_inputs(&self) -> usize;
     fn get_outputs(&self) -> usize;
 }
@@ -30,7 +30,7 @@ pub struct DenseLayer {
     output: Array2<f32>,
     input: Array2<f32>,
     learning_rate: f32,
-    activation_function: String,
+    activation_function: ActivationFunction,
 }
 
 impl Layer for DenseLayer {
@@ -51,16 +51,12 @@ impl Layer for DenseLayer {
     /// backpropagation, optimizing memory and compute time.
     fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
         self.input = Array2::from_shape_vec((inputs.len(), 1), inputs).unwrap();
-        let map = get_activation_map();
-        let activation_function = map
-            .get(&String::from(self.activation_function.clone()))
-            .unwrap();
 
         // Z = W * X + B
         let weighted_sums = self.weights.dot(&self.input) + &self.biases;
 
         // A = f(Z)
-        let weighted_sums = weighted_sums.mapv(activation_function);
+        let weighted_sums = weighted_sums.mapv(|x| self.activation_function.apply(x));
 
         self.output = weighted_sums.clone();
         weighted_sums.iter().cloned().collect()
@@ -92,22 +88,17 @@ impl Layer for DenseLayer {
     ///    $$W_{new} = W - (\alpha \cdot dW)$$
     ///    $$B_{new} = B - (\alpha \cdot dB)$$
     fn back_propagate(&mut self, gradient_from_next_layer: &Array2<f32>) -> Array2<f32> {
-        let map = get_activation_derivative_a_map();
-        let activation_derivative = map
-            .get(&String::from(self.activation_function.clone()))
-            .unwrap();
-
         // 1. Error = gradient ⊙ f'(A)
-        let error = gradient_from_next_layer * &self.output.mapv(activation_derivative);
+        let error = gradient_from_next_layer * &self.output.mapv(|a| self.activation_function.derivative_a(a));
 
         // 2. dW = Error * X^T
-        let weight_gradients = error.dot(&self.input.t().to_owned());
+        let weight_gradients = error.dot(&self.input.t());
 
         // dB = Error
         let bias_gradients = error.clone();
 
         // 3. dX = W^T * Error (Calculated before updating weights!)
-        let previous_layer_error = self.weights.t().to_owned().dot(&error);
+        let previous_layer_error = self.weights.t().dot(&error);
 
         // 4. Update Weights and Biases (W = W - α * dW)
         self.add_to_weights(&weight_gradients.mapv(|x| x * -self.learning_rate));
@@ -132,8 +123,8 @@ impl Layer for DenseLayer {
         self.learning_rate
     }
 
-    fn get_activation_function(&self) -> String {
-        self.activation_function.clone()
+    fn get_activation_function(&self) -> ActivationFunction {
+        self.activation_function
     }
 
     fn get_inputs(&self) -> usize {
@@ -149,10 +140,10 @@ impl DenseLayer {
     pub fn new(
         inputs: usize,
         outputs: usize,
-        activation_function: String,
+        activation_function: ActivationFunction,
         learning_rate: f32,
     ) -> DenseLayer {
-        let weights = random_matrix(outputs, inputs, &activation_function);
+        let weights = random_matrix(outputs, inputs, activation_function);
         let biases = Array2::zeros((outputs, 1));
 
         DenseLayer {
@@ -176,13 +167,9 @@ impl DenseLayer {
     }
 }
 
-fn random_matrix(rows: usize, cols: usize, activation: &str) -> Array2<f32> {
+fn random_matrix(rows: usize, cols: usize, activation: ActivationFunction) -> Array2<f32> {
     let mut rng = rand::thread_rng();
-    let limit = match activation {
-        "RELU" => (6.0 / (cols as f32)).sqrt(),
-        "TANH" | "SIGMOID" => (6.0 / (cols + rows) as f32).sqrt(),
-        _ => 1.0 / (cols as f32).sqrt(),
-    };
+    let limit = activation.weight_init_limit(cols, rows);
 
     Array2::from_shape_fn((rows, cols), |_| rng.gen_range(-limit..limit))
 }

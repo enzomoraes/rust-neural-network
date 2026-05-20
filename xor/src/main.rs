@@ -1,3 +1,4 @@
+use neural_network::activations::ActivationFunction;
 use neural_network::layer::DenseLayer;
 use neural_network::loss_functions::LossFunction;
 use neural_network::NeuralNetwork;
@@ -6,11 +7,11 @@ fn main() {
     let learning_rate: f32 = 0.2;
     let mut network: NeuralNetwork = NeuralNetwork::new(
         vec![
-            Box::new(DenseLayer::new(2, 3, String::from("TANH"), learning_rate)),
+            Box::new(DenseLayer::new(2, 3, ActivationFunction::Tanh, learning_rate)),
             Box::new(DenseLayer::new(
                 3,
                 1,
-                String::from("SIGMOID"),
+                ActivationFunction::Sigmoid,
                 learning_rate,
             )),
         ],

@@ -5,6 +5,7 @@ mod load_mnist_data;
 use data_augmentation::{augment_mnist, AugmentationConfig};
 use image_export::save_augmented_samples;
 use load_mnist_data::load_data;
+use neural_network::activations::ActivationFunction;
 use neural_network::layer::DenseLayer;
 use neural_network::loss_functions::LossFunction;
 use neural_network::savable_neural_network::SavableNeuralNetwork;
@@ -13,9 +14,9 @@ use neural_network::NeuralNetwork;
 fn main() {
     let learning_rate: f32 = 0.01;
     let layers_array = [
-        DenseLayer::new(784, 128, String::from("RELU"), learning_rate),
-        DenseLayer::new(128, 32, String::from("RELU"), learning_rate),
-        DenseLayer::new(32, 10, String::from("SIGMOID"), learning_rate),
+        DenseLayer::new(784, 128, ActivationFunction::Relu, learning_rate),
+        DenseLayer::new(128, 32, ActivationFunction::Relu, learning_rate),
+        DenseLayer::new(32, 10, ActivationFunction::Sigmoid, learning_rate),
     ];
     println!(
         "Started - learning rate {learning_rate}",
