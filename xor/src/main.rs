@@ -25,7 +25,7 @@ fn main() {
         vec![1.0, 1.0],
     ];
     let target: Vec<Vec<f32>> = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
-    network.train(inputs.clone(), target.clone(), 1000);
+    network.train_with_batches(inputs.clone(), target.clone(), 1000, 4);
     // network.save("./saved-network.json".to_string());
 
     let mut testing_accuracy: f32 = 0.0;

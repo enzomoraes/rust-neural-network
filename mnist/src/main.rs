@@ -58,7 +58,7 @@ fn main() {
         Err(e) => eprintln!("✗ Error saving images: {}", e),
     }
 
-    network.train(inputs_train, target_train, 10);
+    network.train_with_batches(inputs_train, target_train, 10, 32);
     network.save("./saved-network-mnist.json".to_string());
 
     let mut testing_accuracy: f32 = 0.0;

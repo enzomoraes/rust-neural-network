@@ -1,16 +1,24 @@
 use core::fmt;
 
-use crate::{
-    activations::ActivationFunction,
-    savable_neural_network::SavedLayers,
-};
+use crate::{activations::ActivationFunction, savable_neural_network::SavedLayers};
 use ndarray::Array2;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 pub trait Layer {
-    fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32>;
+    fn feed_forward(&mut self, inputs: &Array2<f32>) -> Array2<f32>;
     fn back_propagate(&mut self, gradient_from_next_layer: &Array2<f32>) -> Array2<f32>;
+
+    fn compute_gradients(
+        &mut self,
+        gradient_from_next_layer: &Array2<f32>,
+    ) -> (Array2<f32>, Array2<f32>, Array2<f32>);
+    fn apply_weight_update(
+        &mut self,
+        weight_gradients: &Array2<f32>,
+        bias_gradients: &Array2<f32>,
+        batch_size: usize,
+    );
 
     fn get_type(&self) -> String;
     fn get_biases(&self) -> Array2<f32>;
@@ -49,17 +57,17 @@ impl Layer for DenseLayer {
     ///
     /// The resulting activated matrix ($A$) is saved as `self.output` to be reused during
     /// backpropagation, optimizing memory and compute time.
-    fn feed_forward(&mut self, inputs: Vec<f32>) -> Vec<f32> {
-        self.input = Array2::from_shape_vec((inputs.len(), 1), inputs).unwrap();
+    fn feed_forward(&mut self, inputs: &Array2<f32>) -> Array2<f32> {
+        self.input = inputs.clone();
 
         // Z = W * X + B
-        let weighted_sums = self.weights.dot(&self.input) + &self.biases;
+        let weighted_sums = self.weights.dot(inputs) + &self.biases;
 
         // A = f(Z)
-        let weighted_sums = weighted_sums.mapv(|x| self.activation_function.apply(x));
+        let output = weighted_sums.mapv(|x| self.activation_function.apply(x));
 
-        self.output = weighted_sums.clone();
-        weighted_sums.iter().cloned().collect()
+        self.output = output.clone();
+        output
     }
 
     /// Executes the Backward Pass (Backpropagation) through the Dense Layer.
@@ -88,23 +96,46 @@ impl Layer for DenseLayer {
     ///    $$W_{new} = W - (\alpha \cdot dW)$$
     ///    $$B_{new} = B - (\alpha \cdot dB)$$
     fn back_propagate(&mut self, gradient_from_next_layer: &Array2<f32>) -> Array2<f32> {
-        // 1. Error = gradient ⊙ f'(A)
-        let error = gradient_from_next_layer * &self.output.mapv(|a| self.activation_function.derivative_a(a));
-
-        // 2. dW = Error * X^T
-        let weight_gradients = error.dot(&self.input.t());
-
-        // dB = Error
-        let bias_gradients = error.clone();
-
-        // 3. dX = W^T * Error (Calculated before updating weights!)
-        let previous_layer_error = self.weights.t().dot(&error);
-
-        // 4. Update Weights and Biases (W = W - α * dW)
-        self.add_to_weights(&weight_gradients.mapv(|x| x * -self.learning_rate));
-        self.add_to_biases(&bias_gradients.mapv(|x| x * -self.learning_rate));
+        let (previous_layer_error, weight_gradients, bias_gradients) =
+            self.compute_gradients(gradient_from_next_layer);
+        self.apply_weight_update(&weight_gradients, &bias_gradients, 1);
 
         previous_layer_error
+    }
+
+    fn compute_gradients(
+        &mut self,
+        gradient_from_next_layer: &Array2<f32>,
+    ) -> (Array2<f32>, Array2<f32>, Array2<f32>) {
+        // 1. Error = gradient ⊙ f'(A)
+
+        let error = gradient_from_next_layer
+            * &self
+                .output
+                .mapv(|a| self.activation_function.derivative_a(a));
+        // 2. dW = Error * X^T
+
+        let weight_gradients = error.dot(&self.input.t());
+        // dB = Error
+
+        let bias_gradients = error.clone();
+        // 3. dX = W^T * Error (Calculated before updating weights!)
+
+        let previous_layer_error = self.weights.t().dot(&error);
+
+        (previous_layer_error, weight_gradients, bias_gradients)
+    }
+
+    fn apply_weight_update(
+        &mut self,
+        weight_gradients: &Array2<f32>,
+        bias_gradients: &Array2<f32>,
+        batch_size: usize,
+    ) {
+        // 4. Update Weights and Biases (W = W - α * dW)
+        let scaling_factor = self.learning_rate / batch_size as f32;
+        self.add_to_weights(&weight_gradients.mapv(|x| -x * scaling_factor));
+        self.add_to_biases(&bias_gradients.mapv(|x| -x * scaling_factor));
     }
 
     fn get_type(&self) -> String {
