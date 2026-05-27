@@ -3,10 +3,27 @@ pub mod layer;
 pub mod loss_functions;
 pub mod savable_neural_network;
 
+use crate::activations::ActivationFunction;
 use crate::layer::Layer;
 use loss_functions::LossFunction;
 use ndarray::Array2;
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
+
+#[derive(Serialize, Deserialize)]
+pub struct Prediction {
+    pub input: Vec<f32>,
+    pub layers: Vec<LayerTrace>,
+    pub predicted_index: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LayerTrace {
+    pub activation_function: ActivationFunction,
+    pub activations: Vec<f32>,
+    pub activations_normalized: Vec<f32>,
+    pub connections_normalized: Vec<f32>,
+}
 
 pub struct NeuralNetwork {
     layers: Vec<Box<dyn Layer>>,
@@ -142,12 +159,19 @@ impl NeuralNetwork {
                 let (mean_loss, accuracy) = self.evaluate_epoch(&inputs, &target);
                 println!(
                     "Epoch {}/{} | Loss: {:.6} | Accuracy: {:.2}% | Elapsed: {} ms",
-                    epoch, epochs, mean_loss, accuracy, start_time.elapsed().as_millis()
+                    epoch,
+                    epochs,
+                    mean_loss,
+                    accuracy,
+                    start_time.elapsed().as_millis()
                 );
             }
         }
 
-        println!("Time elapsed in training -> {:?} milliseconds", start_time.elapsed().as_millis());
+        println!(
+            "Time elapsed in training -> {:?} milliseconds",
+            start_time.elapsed().as_millis()
+        );
     }
 
     pub fn try_to_predict(&mut self, inputs: Vec<f32>) -> Vec<f32> {
@@ -156,6 +180,38 @@ impl NeuralNetwork {
             predictions = self.layers[layer_index].feed_forward(&predictions);
         }
         predictions.iter().cloned().collect()
+    }
+
+    pub fn try_to_predict_with_trace(&mut self, inputs: Vec<f32>) -> Prediction {
+        let input_vec = inputs.clone();
+        self.try_to_predict(inputs);
+
+        let layers_trace: Vec<LayerTrace> = self
+            .layers
+            .iter()
+            .map(|layer| {
+                let activations: Vec<f32> = layer.get_output().iter().cloned().collect();
+                // connections[dst, src] = weights[dst, src] * layer_input[src]
+                let products = &layer.get_weights() * &layer.get_input().t();
+                let connections: Vec<f32> = products.iter().cloned().collect();
+
+                LayerTrace {
+                    activation_function: layer.get_activation_function(),
+                    activations_normalized: normalize_max_abs(&activations),
+                    connections_normalized: normalize_max_abs(&connections),
+                    activations,
+                }
+            })
+            .collect();
+
+        let predicted_index =
+            NeuralNetwork::get_max_value_index(layers_trace.last().unwrap().activations.clone());
+
+        Prediction {
+            input: input_vec,
+            layers: layers_trace,
+            predicted_index,
+        }
     }
 
     pub fn get_max_value_index(vector: Vec<f32>) -> usize {
@@ -169,5 +225,83 @@ impl NeuralNetwork {
             }
         }
         return max_index;
+    }
+}
+
+fn normalize_max_abs(values: &[f32]) -> Vec<f32> {
+    let max_abs = values
+        .iter()
+        .map(|v| v.abs())
+        .fold(0.0_f32, f32::max)
+        .max(1e-6);
+    values.iter().map(|v| v / max_abs).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::activations::ActivationFunction;
+    use crate::layer::DenseLayer;
+
+    #[test]
+    fn trace_shape_matches_network_topology() {
+        let layers: Vec<Box<dyn Layer>> = vec![
+            Box::new(DenseLayer::new(4, 3, ActivationFunction::Relu, 0.01)),
+            Box::new(DenseLayer::new(3, 2, ActivationFunction::Sigmoid, 0.01)),
+        ];
+        let mut network = NeuralNetwork::new(layers, LossFunction::SquaredError);
+
+        let input = vec![0.1, 0.2, 0.3, 0.4];
+        let trace = network.try_to_predict_with_trace(input.clone());
+
+        assert_eq!(trace.input, input);
+        assert_eq!(trace.layers.len(), 2);
+
+        // Layer 0: 4 inputs -> 3 outputs, so 3 activations and 4*3=12 connection values.
+        assert_eq!(trace.layers[0].activations.len(), 3);
+        assert_eq!(trace.layers[0].activations_normalized.len(), 3);
+        assert_eq!(trace.layers[0].connections_normalized.len(), 12);
+
+        // Layer 1: 3 inputs -> 2 outputs.
+        assert_eq!(trace.layers[1].activations.len(), 2);
+        assert_eq!(trace.layers[1].activations_normalized.len(), 2);
+        assert_eq!(trace.layers[1].connections_normalized.len(), 6);
+
+        // predicted_index must be valid for the last layer.
+        assert!(trace.predicted_index < 2);
+
+        // Normalized values are in [-1, 1] (allow tiny float slop).
+        for layer in &trace.layers {
+            for v in &layer.activations_normalized {
+                assert!(v.abs() <= 1.0 + 1e-5, "activation norm out of range: {}", v);
+            }
+            for v in &layer.connections_normalized {
+                assert!(v.abs() <= 1.0 + 1e-5, "connection norm out of range: {}", v);
+            }
+        }
+    }
+
+    #[test]
+    fn trace_last_layer_matches_try_to_predict() {
+        let layers: Vec<Box<dyn Layer>> = vec![
+            Box::new(DenseLayer::new(3, 4, ActivationFunction::Relu, 0.01)),
+            Box::new(DenseLayer::new(4, 2, ActivationFunction::Sigmoid, 0.01)),
+        ];
+        let mut network = NeuralNetwork::new(layers, LossFunction::SquaredError);
+
+        let input = vec![0.5, -0.3, 0.7];
+        let predict = network.try_to_predict(input.clone());
+        let trace = network.try_to_predict_with_trace(input);
+
+        assert_eq!(
+            predict.len(),
+            trace.layers.last().unwrap().activations.len()
+        );
+        for (a, b) in predict
+            .iter()
+            .zip(trace.layers.last().unwrap().activations.iter())
+        {
+            assert!((a - b).abs() < 1e-5);
+        }
     }
 }

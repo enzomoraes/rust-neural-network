@@ -27,6 +27,8 @@ pub trait Layer {
     fn get_activation_function(&self) -> ActivationFunction;
     fn get_inputs(&self) -> usize;
     fn get_outputs(&self) -> usize;
+    fn get_input(&self) -> Array2<f32>;
+    fn get_output(&self) -> Array2<f32>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -164,6 +166,14 @@ impl Layer for DenseLayer {
 
     fn get_outputs(&self) -> usize {
         self.outputs
+    }
+
+    fn get_input(&self) -> Array2<f32> {
+        self.input.clone()
+    }
+
+    fn get_output(&self) -> Array2<f32> {
+        self.output.clone()
     }
 }
 
